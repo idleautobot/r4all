@@ -1,0 +1,119 @@
+<style>
+.isOn {
+    color: #4caf50;
+}
+
+.isOff {
+    color: #f44336;
+}
+</style>
+
+<div class="row text-center">
+    <h2 style="margin-bottom: 40px;"><kbd>Uptime: <%= moment.duration(moment().tz('Europe/Lisbon').diff(startupTime)).humanize() %> <small style="color: white;">Booted on <%= startupTime.format('DD/MM/YYYY HH:mm:ss') %></small></kbd></h2>
+</div>
+
+<div class="row">
+    <div class="col-md-6 text-center">
+        <div class="col-md-10 col-md-offset-1">
+            <h4>Providers Status</h4>
+
+            <div class="row">
+                <% if(core.isOn) { %>
+                    <a class="btn btn-danger btn-xs pull-right" href="/core/stop" role="button" style="margin-right: 2.5%;"><span class="glyphicon glyphicon-stop" aria-hidden="true"></span> Stop Core</a>
+                <% } %>
+
+                <a class="btn btn-success btn-xs pull-right" href="/core/refresh" role="button" style="margin-right: 2.5%;"><span class="glyphicon glyphicon-<%= core.isOn ? 'refresh' : 'play' %>" aria-hidden="true"></span> <%= core.isOn ? 'Force Refresh' : 'Start Core' %></a>
+            </div>
+
+            <div class="list-group">
+                <li class="list-group-item"><b>Core</b>: <%= core.refreshes.toLocaleString() %> <%= core.refreshes == 1 ? 'refresh' : 'refreshes' %> <%= core.lastRefresh ? '(' + moment.duration(moment().diff(core.lastRefresh)).humanize() + ' ago)' : '' %><span class="glyphicon glyphicon-off pull-right <%= core.isOn ? 'isOn' : 'isOff' %>"></span></li>
+                
+                <a href="<%= providers.rarbg.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/rarbg-favicon.ico"> RARBG »<span class="glyphicon glyphicon-off pull-right <%= providers.rarbg.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.imdb.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/imdb-favicon.ico" width="16"> IMDb »<span class="glyphicon glyphicon-off pull-right <%= providers.imdb.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.trakttv.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/trakttv-favicon.ico" width="16"> TraktTv »<span class="glyphicon glyphicon-off pull-right <%= providers.trakttv.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.themoviedb.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/themoviedb-favicon.ico" width="16"> The Movie Database »<span class="glyphicon glyphicon-off pull-right <%= providers.themoviedb.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.addic7ed.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/addic7ed-favicon.ico"> Addic7ed »<span class="glyphicon glyphicon-off pull-right <%= providers.addic7ed.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.legendasdivx.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/legendasdivx-favicon.ico"> LegendasDivx »<span class="glyphicon glyphicon-off pull-right <%= providers.legendasdivx.isOn ? 'isOn' : 'isOff' %>"></span></a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h4 class="text-center">Memory Usage</h4>
+        <div id="memory" style="height: 500px;"></div>
+    </div>
+</div>
+
+<script>
+$(function() {
+    Highcharts.setOptions({
+        global: {
+            useUTC: false
+        }
+    });
+
+    // Create the chart
+    $('#memory').highcharts('StockChart', {
+        chart: {
+            events: {
+                load: function () {
+                    // set up the updating of the chart each second
+                    var series = this.series[0];
+
+                    setInterval(function () {
+                        $.get('/memory', function(point) {
+                            series.addPoint(point, true, true);
+                        });
+                    }, 60 * 1000);
+                }
+            }
+        },
+
+        rangeSelector: {
+            buttons: [{
+                type: 'day',
+                count: 1,
+                text: '1d'
+            }, {
+                type: 'week',
+                count: 1,
+                text: '1w'
+            }, {
+                type: 'month',
+                count: 1,
+                text: '1m'
+            }, {
+                type: 'ytd',
+                text: 'YTD'
+            }, {
+                type: 'all',
+                text: 'All'
+            }],
+            inputEnabled: false,
+            selected: 0
+        },
+
+        exporting: {
+            enabled: false
+        },
+
+        tooltip: {
+            xDateFormat: '%Y-%m-%d %H:%M',
+            valueDecimals: 2,
+            valueSuffix: 'M',
+            shared: true
+        },
+
+        yAxis: {
+            labels: {
+                format: '{value}M'
+            }
+        },
+        
+        series: [{
+            name: 'rss',
+            data: <%- JSON.stringify(memoryUsage) %>,
+            turboThreshold: 0
+        }]
+    });
+});
+</script>

@@ -1,0 +1,307 @@
+<style>
+#notifications {
+    position: fixed;
+    right: 40px;
+    top: 60px;
+    width: 600px;
+    z-index: 3;
+}
+</style>
+
+<% if(releases.length) { %>
+	<% if(isAuthed) { %>
+		<div id="notifications"></div>
+	<% } %>
+
+	<nav class="text-center">
+		<ul class="pager">
+			<% if(parseInt(page) > 1) { %>
+				<li class="previous"><a href="<%= path %>/page/<%= parseInt(page) - 1 %>/"><span aria-hidden="true">&larr;</span> Previous</a></li>
+			<% } %>
+
+			<% if(releases.length > settings.dashboardPageRecords) { %>
+				<li class="next"><a href="<%= path %>/page/<%= parseInt(page) + 1 %>/">Next <span aria-hidden="true">&rarr;</span></a></li>
+			<% } %>
+		</ul>
+		
+		<button type="button" class="btn btn-primary btn-sm collapseInfo" style="position: relative; top: <%= parseInt(page) > 1 || releases.length > settings.dashboardPageRecords ? '-52' : '-20' %>px;">
+			<span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span>&ensp;Collapse Releases Info&ensp;<span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span>
+		</button>
+	</nav>
+
+	<% _.each(releases, function(r, index) { %>
+		<% if(index < settings.dashboardPageRecords) { %>
+			<div id="<%= r._id %>" data-name="<%= r.name %>" class="panel panel-default <%= r.category %>">
+				<div class="panel-body">
+					<h4 style="margin-top: 0">
+						<kbd style="color: #cddc39;">
+							<% if(!r.isVerified) { %>
+								<a href="<%= r.ddlvalley ? providers.ddlvalley.POST_URL.replace(/\{postId\}/, r.ddlvalley) : 'http://predb.me/?search=' + r.name %>" target="_blank"><span class="label label-danger" style="padding-bottom: 1px;">!</span></a>
+							<% } %>
+							<%= r.name %>
+							<small style="color: #ff5722;"> on <%= moment(r.pubdate).format('YYYY-MM-DD HH:mm:ss') %></small>
+						</kbd>
+
+						<% if(r.imdb) { %>
+							<button type="button" class="btn btn-xs btn-default pull-right toggleInfo">
+								<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+							</button>
+						<% } %>
+					</h4>
+
+					<% if(r.imdb) { %>
+						<div class="row releaseInfo">
+							<div class="col-sm-4 col-md-3 col-lg-2">
+								<div class="thumbnail">
+									<img src="<%= r.imdb.cover ? common.resizeImage(r.imdb.cover, providers, 'thumb') : '/images/no-poster.jpg' %>" class="img-fluid" alt="<%= r.name %> cover">
+									<div class="caption text-center">
+										<a href="<%= providers.imdb.TITLE_URL.replace(/\{imdbId\}/, r.imdbId) %>" class="btn btn-primary btn-xs" role="button" target="_blank">IMDb</a>&nbsp;
+										<a href="<%= r.nfo ? providers.nfomation.NFO_IMAGE_URL.replace(/\{nfo\}/, r.nfo) : 'javaScript:void(0);' %>" class="btn btn-primary btn-xs <%= r.nfo ? '' : 'disabled' %> image-link" role="button" target="_blank"><span class="glyphicon glyphicon-info-sign"></span></a>&nbsp;
+										<a href="<%= r.imdb.trailer ? r.imdb.trailer : 'javaScript:void(0);' %>" class="btn btn-primary btn-xs <%= r.imdb.trailer ? '' : 'disabled' %>" role="button" target="_blank"><span class="glyphicon glyphicon-film"></span></a>
+									</div>
+								</div>
+							</div>
+
+							<div class="col-sm-5 col-md-6 col-lg-8">
+								<div class="thumbnail">
+									<div class="row text-center">
+										<a href="/releases/imdb/<%= r.imdbId %>/">
+											<h4 class="text-center">
+												<%= r.imdb.title %> (<%= r.imdb.year %>)
+											</h4>
+										</a>
+
+										<h4 class="text-center">
+											<% if(r.imdb.aka) { %>
+												<small>aka: <%= r.imdb.aka %></small>
+											<% } %>
+										</h4>
+
+										<h4 class="text-center">
+											<% if(r.imdb.numSeasons || r.imdb.state) { %>
+												<small>
+													<% if(r.imdb.numSeasons) { %>
+														<%= r.imdb.numSeasons %> <%= r.imdb.numSeasons == 1 ? 'season' : 'seasons' %>
+														<%= r.imdb.state ? '-' : '' %>
+													<% } %>
+													<%= r.imdb.state || '' %>
+												</small>
+											<% } %>
+										</h4>
+									</div>
+
+									<div class="row text-center">
+										<span class="rating" rate="<%= r.imdb.rating || 0 %>"></span>
+										<span>&nbsp;<b><%= r.imdb.rating || '-' %></b>/10 - <%= r.imdb.votes ? parseInt(r.imdb.votes).toLocaleString() : '-' %> votes</span>
+									</div>
+
+									<br>
+
+									<div>
+								 		<span class="label label-primary">Plot</span>
+
+								 		<div class="pull-right">
+								 			<% if(r.imdb.genres) { %>
+									 			<% _.each(r.imdb.genres, function(genre) { %>
+									 				<span class="label label-info"><%= genre %></span>
+									 			<% }); %>
+									 		<% } %>
+
+									 		<% if(r.imdb.runtime) { %>
+									 			<% var runtime = moment.duration(parseInt(r.imdb.runtime), 'minutes') %>
+									 			<span class="label label-default"><%= runtime.hours() ? runtime.hours() + 'h' : '' %><%= (runtime.minutes() > 9 ? '' : '0') + runtime.minutes() %>m</span>
+									 		<% } %>
+								 		</div>
+
+										<div class="well well-sm"><%= r.imdb.plot || 'Plot not available.' %></div>
+									</div>
+								</div>
+
+								<div class="thumbnail">
+									<div class="input-group">
+										<span class="input-group-addon"><b>Torrent:</b></span>
+
+										<input type="text" class="form-control rTorrent" value="<%= r.torrentName ? r.torrentName : '-' %>" <%= isAuthed ? '' : 'disabled' %>>
+
+										<div class="input-group-btn">
+											<% if(isAuthed) { %>
+												<button type="button" class="btn btn-primary rTorrentUpdate">
+													<span class="glyphicon glyphicon-ok"></span>
+												</button>
+											<% } %>
+
+											<a href="<%= r.magnetLink ? r.magnetLink : 'javaScript:void(0);' %>" class="btn btn-<%= r.magnetLink ? 'success' : 'danger disabled' %>" role="button"><span class="glyphicon glyphicon-magnet"></span></a>
+											<a href="<%= r.torrentId ? providers[r.torrentProvider].TORRENT_URL.replace(/\{torrentId\}/, r.torrentId) : 'javaScript:void(0);' %>" class="btn btn-<%= r.torrentId ? 'success' : 'danger disabled' %>" role="button" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
+										</div>
+									</div>
+
+									<br>
+
+									<div class="input-group" <%- isAuthed ? '' : 'style="width: 0px;"' %>>
+										<span class="input-group-addon"><b>Subtitle:</b></span>
+
+										<% if(isAuthed) { %>
+											<input type="text" value="<%= r.subtitleId ? (r.category == 's720p' ? providers.addic7ed.URL + r.subtitleId : providers.legendasdivx.DOWNLOAD_URL.replace(/\{subtitleId\}/, r.subtitleId)) : '' %>" class="form-control rSubtitle">
+										<% } %>
+
+										<div class="input-group-btn">
+											<% if(isAuthed) { %>
+												<button type="button" class="btn btn-primary rSubtitleUpdate">
+													<span class="glyphicon glyphicon-ok"></span>
+												</button>
+											<% } %>
+
+											<a href="<%= r.subtitleId ? (r.category == 's720p' ? '/subtitle/' + r.name + r.subtitleId : providers.legendasdivx.DOWNLOAD_URL.replace(/\{subtitleId\}/, r.subtitleId)) : 'javaScript:void(0);' %>" class="btn btn-<%= r.subtitleId ? 'success' : 'danger disabled' %>" role="button"><span class="glyphicon glyphicon-download-alt"></span></a>
+
+											<% if(r.type == 'movie') { %>
+												<a href="<%= r.subtitleId ? providers.legendasdivx.SUBTITLE_URL.replace(/\{subtitleId\}/, r.subtitleId) : 'javaScript:void(0);' %>" class="btn btn-<%= r.subtitleId ? 'success' : 'danger disabled' %>" role="button" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
+											<% } %>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="col-sm-3 col-md-3 col-lg-2 text-center">
+								<div class="list-group">
+									<a href="http://predb.me/?search=<%= r.name %>" class="list-group-item" target="_blank"><img src="/images/providers/predb-favicon.ico"> PreDB.me »</a>
+									<a href="<%= r.ddlvalley ? providers.ddlvalley.POST_URL.replace(/\{postId\}/, r.ddlvalley) : providers.ddlvalley.SEARCH_URL.replace(/\{s\}/, r.name) %>" class="list-group-item" target="_blank"><img src="/images/providers/ddlvalley-favicon.ico"> DDLValley »</a>
+									<a href="<%= r.rlsbb ? providers.rlsbb.POST_URL.replace(/\{postId\}/, r.rlsbb) : providers.rlsbb.SEARCH_URL.replace(/\{s\}/, r.name.replace(/\./g, ' ')) %>" class="list-group-item" target="_blank"><img src="/images/providers/rlsbb-favicon.ico"> Rlsbb »</a>
+									<a href="<%= r.twoddl ? providers.twoddl.POST_URL.replace(/\{postId\}/, r.twoddl) : providers.twoddl.SEARCH_URL.replace(/\{s\}/, r.name.replace(/\./g, ' ')) %>" class="list-group-item" target="_blank"><img src="/images/providers/twoddl-favicon.ico"> TwoDDL »</a>
+		                            <a href="<%= providers.kickasstorrents.SEARCH_URL.replace(/\{s\}/, r.name) %>/" class="list-group-item" target="_blank" style="display: none;"><img src="/images/providers/kickasstorrents-favicon.ico"> KickassTorrents »</a>
+		                            <a href="<%= providers.rarbg.SEARCH_URL.replace(/\{s\}/, r.name) %>/" class="list-group-item" target="_blank"><img src="/images/providers/rarbg-favicon.ico"> RARBG »</a>
+		                            <a href="<%= providers.thepiratebay.SEARCH_URL.replace(/\{s\}/, r.name) %>/" class="list-group-item" target="_blank"><img src="/images/providers/thepiratebay-favicon.ico"> The Pirate Bay »</a>
+
+									<% if(r.type == 'movie') { %>
+		                            	<a href="<%= providers.legendasdivx.SEARCH_URL.replace(/\{imdbId\}/, r.imdbId.replace(/\D/g, '')).replace(/\{page\}/, 1) %>" class="list-group-item" target="_blank"><img src="/images/providers/legendasdivx-favicon.ico"> LegendasDivx »</a>
+									<% } %>
+
+									<% if(r.type == 'show' && r.imdb.addic7edId) { %>
+		                            	<a href="<%= providers.addic7ed.SHOW_URL.replace(/\{addic7edId\}/, r.show.addic7edId) %>" class="list-group-item" target="_blank"><img src="/images/providers/addic7ed-favicon.ico"> Addic7ed »</a>
+									<% } %>
+								</div>
+							</div>
+						</div>
+					<% } %>
+				</div>
+			</div>
+    	<% } %>
+    <% }); %>
+
+	<nav>
+		<ul class="pager">
+			<% if(parseInt(page) > 1) { %>
+				<li class="previous"><a href="<%= path %>/page/<%= parseInt(page) - 1 %>/"><span aria-hidden="true">&larr;</span> Previous</a></li>
+			<% } %>
+			<% if(releases.length > settings.dashboardPageRecords) { %>
+				<li class="next"><a href="<%= path %>/page/<%= parseInt(page) + 1 %>/">Next <span aria-hidden="true">&rarr;</span></a></li>
+			<% } %>
+		</ul>
+	</nav>
+<% } else { %>
+	<div role="alert" class="alert alert-danger"><strong>Oh snap!</strong> Nothing found.</div>
+<% } %>
+
+<script>
+$(function() {
+    // raty initialization
+    $('.rating').each(function() {
+        $(this).raty({
+            readOnly: true,
+            number: 10,
+            score: $(this).attr('rate')
+        });
+    });
+
+    // Magnific Popup initialization
+    $('.image-link').magnificPopup({
+        type: 'image',
+        overflowY: 'scroll'
+    });
+
+    $('.toggleInfo').on('click', function() {
+    	$(this).closest('.panel').find('.releaseInfo').toggle();
+    	$(this).find('span').toggleClass('glyphicon-plus glyphicon-minus');
+    });
+
+    $('.collapseInfo').on('click', function() {
+    	$('.releaseInfo').hide();
+    	$('.toggleInfo').find('span').removeClass('glyphicon-minus').addClass('glyphicon-plus');
+    });
+
+	$('.rTorrentUpdate').on('click', function() {
+		var releaseSel = $(this).closest('.panel');
+
+		var release = {
+			_id: $(releaseSel).attr('id'),
+			torrentProvider: '',
+			torrentId: '',
+			torrentName: '',
+			magnetLink: $(releaseSel).find('.rTorrent').val()
+		};
+		
+		if(release._id && release.magnetLink) {
+			$.ajax({
+				url: '/release',
+				type: 'PUT',
+				data: release,
+				success: function() {
+					$(releaseSel).find('.rTorrentUpdate').prop('disabled', true);
+					$(releaseSel).find('.rTorrent').prop('disabled', true).parent().removeClass('has-error');
+					$('<div class="alert alert-success alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Well Done!</strong> ' + releaseSel.attr('data-name') + ' release updated!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
+				        $(this).remove();
+				    });
+				},
+				error: function(err) {
+					$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>' + err.responseText + '</div>').prependTo('#notifications').fadeIn('fast');
+				}
+			});
+		} else {
+			!release.magnetLink && $(releaseSel).find('.rTorrent').parent().addClass('has-error');
+
+			$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Oh snap!</strong> Fill it properly!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
+		        $(this).remove();
+		    });
+		}
+	});
+
+	$('.rSubtitleUpdate').on('click', function() {
+		var releaseSel = $(this).closest('.panel');
+
+		var release = {
+			_id: $(releaseSel).attr('id'),
+			subtitleId: $(releaseSel).find('.rSubtitle').val()
+		};
+
+		// get subtitleId
+		if($(releaseSel).hasClass('s720p')) {
+			release.subtitleId = release.subtitleId.replace('<%= providers.addic7ed.URL %>', '');
+		} else {
+			release.subtitleId = release.subtitleId.match(/\d+$/) && release.subtitleId.match(/\d+$/)[0];
+		}
+
+		if(release._id && release.subtitleId) {
+			$.ajax({
+				url: '/release',
+				type: 'PUT',
+				data: release,
+				success: function() {
+					$(releaseSel).find('.rSubtitleUpdate').prop('disabled', true);
+					$(releaseSel).find('.rSubtitle').prop('disabled', true).parent().removeClass('has-error');
+					$('<div class="alert alert-success alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Well Done!</strong> ' + releaseSel.attr('data-name') + ' release updated!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
+				        $(this).remove();
+				    });
+				},
+				error: function(err) {
+					$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>' + err.responseText + '</div>').prependTo('#notifications').fadeIn('fast');
+				}
+			});
+		} else {
+			!release.subtitleId && $(releaseSel).find('.rSubtitle').parent().addClass('has-error');
+
+			$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Oh snap!</strong> Fill it properly!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
+		        $(this).remove();
+		    });
+		}
+	});
+});
+</script>

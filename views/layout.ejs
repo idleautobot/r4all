@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="/public/favicon.png">
+    <title>
+        <%= title %> | r4all</title>
+    <!-- Bootstrap core CSS -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap-theme.min.css" rel="stylesheet">
+    <!-- Custom styles for this template -->
+    <link href="/css/style.css" rel="stylesheet">
+    <link href="/css/chosen.min.css" rel="stylesheet">
+    <link href="/css/chosen.bootstrap.min.css" rel="stylesheet">
+    <link href="/css/jquery.raty.css" rel="stylesheet">
+    <link href="/css/magnific-popup.css" rel="stylesheet">
+
+    <script src="/js/jquery.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">r4all</a>
+            </div>
+            <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="/<%= isAuthed ? 'logout' : 'login' %>/"><span class="glyphicon glyphicon-off"></span> <%= isAuthed ? 'Logout' : 'Login' %></a></li>
+                </ul>
+                <form class="navbar-form navbar-right" action="/search">
+                    <input type="text" name="s" class="form-control" placeholder="Search...">
+                </form>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-3 col-md-2 sidebar">
+                <ul class="nav nav-sidebar">
+                    <li class="<%= title == 'Status' ? 'active' : '' %>"><a href="/status/"><span class="glyphicon glyphicon-info-sign"></span>&ensp;Status</a></li>
+                </ul>
+                <ul class="nav nav-sidebar">
+                    <li class="<%= title == 'Releases' ? 'active' : '' %>"><a href="/releases/"><span class="glyphicon glyphicon-list"></span>&ensp;Releases (<%= (countMovieReleases720p + countMovieReleases1080p + countShowReleases720p + countShowReleases1080p).toLocaleString() %>)</a></li>
+                    <li class="<%= title == 'Movie Releases' ? 'active' : '' %>"><a href="/releases/category/movies/"><span class="glyphicon glyphicon-film"></span>&ensp;Movies (<%= (countMovieReleases720p + countMovieReleases1080p).toLocaleString() %>)</a></li>
+                    <ul class="nav">
+                        <li class="<%= title == '720p Movie Releases' ? 'active' : '' %>"><a href="/releases/category/movies-720p/"><span class="glyphicon glyphicon-hd-video"></span>&ensp;720p (<%= countMovieReleases720p.toLocaleString() %>)</a></li>
+                        <li class="<%= title == '1080p Movie Releases' ? 'active' : '' %>"><a href="/releases/category/movies-1080p/"><span class="glyphicon glyphicon-hd-video"></span>&ensp;1080p (<%= countMovieReleases1080p.toLocaleString() %>)</a></li>
+                    </ul>
+                    <li class="<%= title == 'TV Show Releases' ? 'active' : '' %>"><a href="/releases/category/tv-shows/"><span class="glyphicon glyphicon-facetime-video"></span>&ensp;TV Shows (<%= (countShowReleases720p + countShowReleases1080p).toLocaleString() %>)</a></li>
+                    <ul class="nav">
+                        <li class="<%= title == '720p TV Show Releases' ? 'active' : '' %>"><a href="/releases/category/tv-shows-720p/"><span class="glyphicon glyphicon-hd-video"></span>&ensp;720p (<%= countShowReleases720p.toLocaleString() %>)</a></li>
+                        <li class="<%= title == '1080p TV Show Releases' ? 'active' : '' %>"><a href="/releases/category/tv-shows-1080p/"><span class="glyphicon glyphicon-hd-video"></span>&ensp;1080p (<%= countShowReleases1080p.toLocaleString() %>)</a></li>
+                    </ul>
+                </ul>
+                <ul class="nav nav-sidebar">
+                    <li class="<%= title == 'Verify Movies' ? 'active' : '' %>"><a href="/verify/movies/"><span class="glyphicon glyphicon-check"></span>&ensp;Verify Movies <span class="label label-pill label-danger pull-right"><%= countUnverifiedMovieReleases.toLocaleString() %></span></a></li>
+                    <li class="<%= title == 'Verify Shows' ? 'active' : '' %>"><a href="/verify/shows/"><span class="glyphicon glyphicon-check"></span>&ensp;Verify Shows <span class="label label-pill label-danger pull-right"><%= countUnverifiedShows.toLocaleString() %></span></a></li>
+                </ul>
+                <ul class="nav nav-sidebar">
+                    <li class="<%= title == 'Log' ? 'active' : '' %>"><a href="/log/"><span class="glyphicon glyphicon-console"></span>&ensp;Log</a></li>
+                </ul>
+            </div>
+            <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+                <h3 class="page-header"><%= title %></h3>
+                <%- body %>
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap core JavaScript
+        ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/chosen.jquery.min.js"></script>
+    <script src="/js/jquery.raty.js"></script>
+    <script src="/js/jquery.magnific-popup.min.js"></script>
+    <script src="/js/highstock.js"></script>
+</body>
+
+</html>
