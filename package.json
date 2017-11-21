@@ -25,7 +25,7 @@
     "node-horseman": "^3.3.0",
     "phantomjs-prebuilt": "^2.1.15",
     "request": "^2.83.0",
-    "scene-release-parser": "https://github.com/r4all-bot/scene-release-parser-js.git#patch-1",
+    "scene-release-parser": "https://github.com/idleautobot/scene-release-parser-js.git",
     "serve-favicon": "^2.4.5",
     "urijs": "^1.19.0",
     "winston": "^2.4.0",
