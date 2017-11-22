@@ -291,7 +291,7 @@ Core.prototype.refresh = function() {
                 release.episodes = parsed.episodes;
             }
 
-            if (!release.imdb || !parsed) {
+            if (!release.imdbId || !parsed) {
                 release.isVerified = false;
             }
 

@@ -24,6 +24,8 @@ app.locals.core = require('./core.js');
 app.locals.providers = {
     rarbg: require('./providers/rarbg.js'),
     imdb: require('./providers/imdb.js'),
+    trakttv: require('./providers/trakttv.js'),
+    themoviedb: require('./providers/themoviedb.js'),
     addic7ed: require('./providers/addic7ed.js'),
     legendasdivx: require('./providers/legendasdivx.js')
 };
