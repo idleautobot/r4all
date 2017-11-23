@@ -8,7 +8,7 @@ var URI = require('urijs');
 var log = require('../logger.js');
 
 var API_ENDPOINT = URI('https://api-v2launch.trakt.tv');
-var CLIENT_ID = 'c7e20abc718e46fc75399dd6688afca9ac83cd4519c9cb1fba862b37b8640e89';
+var CLIENT_ID = 'e789bf52a39f68bb829f86a78aa61e2f03fff1415079ce802c2b83a6ac9592ea';
 var STATUS_CODES = {
     '400': 'Bad Request - request couldn\'t be parsed',
     '401': 'Unauthorized - OAuth must be provided',

@@ -164,7 +164,7 @@ var verifyShow = function(release) {
                 isVerified: true
             };
 
-            if (release.imdb._id == null || release.imdb[pubdateProperty] == null) {
+            if (release.imdb == null || release.imdb[pubdateProperty] == null) {
                 isNewEpisodePromise = Promise.resolve(true);
             } else {
                 isNewEpisodePromise = db.getLastEpisode(imdbInfo._id, release.quality)
