@@ -135,7 +135,7 @@ var verifyMovie = function(release) {
                 isVerified: validated
             };
 
-            if (release.imdb._id == null || release.imdb[pubdateProperty] == null) {
+            if (release.imdb == null || release.imdb[pubdateProperty] == null) {
                 imdbInfo[pubdateProperty] = release.pubdate;
             }
 
