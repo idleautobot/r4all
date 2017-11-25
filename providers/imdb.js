@@ -9,8 +9,10 @@ var Horseman = require('node-horseman');
 
 // workaround for 'Error: Failed to GET url:' issue
 Horseman.registerAction('_open', function(url) {
+    var _this = this;
+
     var openURL = function(url) {
-        return this
+        return _this
             .open(url)
             .catch(function(err) {
                 if (err.indexOf('Error: Failed to GET url:') != -1) {
