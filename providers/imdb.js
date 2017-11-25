@@ -180,7 +180,13 @@ var fetchInfo = function(horseman, imdbId) {
                 if (imdbInfo.type == 'movie') {
                     return imdbInfo;
                 } else {
-                    return _.bind(fetchShowEpisodes, _this)(horseman, imdbInfo);
+                    imdbInfo.episodes = {};
+
+                    return _.bind(fetchShowEpisodes, _this)(horseman, imdbInfo)
+                        .then(function() {
+                            delete imdbInfo.seasons;
+                            return imdbInfo;
+                        });
                 }
             } else {
                 throw result.error;
@@ -188,89 +194,86 @@ var fetchInfo = function(horseman, imdbId) {
         });
 };
 
-var fetchShowEpisodes = function(horseman, imdbInfo) {
-    imdbInfo.episodes = {};
+var fetchShowEpisodes = function(horseman, imdbInfo, index) {
+    index = index || 0;
+
+    var season = imdbInfo.seasons[index];
+
+    if (season == null) return;
+
+    var url = _this.SEASON_URL
+        .expand({ imdbId: imdbInfo._id, season: season })
+        .toString();
+
+    if (season > imdbInfo.numSeasons) {
+        imdbInfo.numSeasons = season;
+    }
+
+    debug(url);
 
     var _this = this;
 
-    return Promise.resolve(imdbInfo.seasons)
-        .each(function(season) {
-            var url = _this.SEASON_URL
-                .expand({ imdbId: imdbInfo._id, season: season })
-                .toString();
+    return horseman
+        .userAgent('Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0')
+        ._open(url)
+        .injectJs('node_modules/moment/min/moment.min.js')
+        .evaluate(function(expectedSeason) {
+            var result = {
+                successful: true,
+                episodes: {}
+            };
+            var episodes = result.episodes;
 
-            if (season > imdbInfo.numSeasons) {
-                imdbInfo.numSeasons = season;
-            }
+            var regex = function(str, regex) {
+                try {
+                    var match = str.match(regex);
+                    match.shift(); // remove original string that was parsed
 
-            debug(url);
+                    if (match.length == 1)
+                        return match[0];
+                    else
+                        return match;
+                } catch (err) {
+                    return null;
+                }
+            };
 
-            return horseman
-                .userAgent('Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0')
-                ._open(url)
-                .injectJs('node_modules/moment/min/moment.min.js')
-                .evaluate(function(expectedSeason) {
-                    var result = {
-                        successful: true,
-                        episodes: {}
-                    };
-                    var episodes = result.episodes;
+            try {
+                // validate the page
+                if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
+                if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (' + $('#episode_top').text() + ')';
 
-                    var regex = function(str, regex) {
-                        try {
-                            var match = str.match(regex);
-                            match.shift(); // remove original string that was parsed
+                $('.list_item').each(function() {
+                    var parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
 
-                            if (match.length == 1)
-                                return match[0];
-                            else
-                                return match;
-                        } catch (err) {
-                            return null;
-                        }
-                    };
+                    if (parsed) {
+                        var season = parseInt(parsed[0]);
+                        var episode = parseInt(parsed[1]);
+                        var aired = $(this).find('.airdate').text().trim();
 
-                    try {
-                        // validate the page
-                        if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
-                        if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (' + $('#episode_top').text() + ')';
+                        if (expectedSeason != season) throw 'unexpected season, expecting \'' + expectedSeason + '\' and got \'' + season + '\'';
 
-                        $('.list_item').each(function() {
-                            var parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
+                        var ep = episodes[episode] = {};
 
-                            if (parsed) {
-                                var season = parseInt(parsed[0]);
-                                var episode = parseInt(parsed[1]);
-                                var aired = $(this).find('.airdate').text().trim();
-
-                                if (expectedSeason != season) throw 'unexpected season, expecting \'' + expectedSeason + '\' and got \'' + season + '\'';
-
-                                var ep = episodes[episode] = {};
-
-                                ep.title = $(this).find('[itemprop="name"]').text().trim();
-                                ep.aired = moment(aired, 'D MMM. YYYY').isValid() && moment(aired, 'D MMM. YYYY').toDate();
-                                ep.description = $(this).find('.item_description').text().trim();
-                            }
-                        });
-                    } catch (err) {
-                        result.successful = false;
-                        result.error = err;
-                    }
-
-                    return result;
-                }, season)
-                .then(function(result) {
-                    if (result.successful) {
-                        imdbInfo.episodes[season] = result.episodes;
-                        return;
-                    } else {
-                        throw result.error;
+                        ep.title = $(this).find('[itemprop="name"]').text().trim();
+                        ep.aired = moment(aired, 'D MMM. YYYY').isValid() && moment(aired, 'D MMM. YYYY').toDate();
+                        ep.description = $(this).find('.item_description').text().trim();
                     }
                 });
-        })
-        .then(function() {
-            delete imdbInfo.seasons;
-            return imdbInfo;
+            } catch (err) {
+                result.successful = false;
+                result.error = err;
+            }
+
+            return result;
+        }, season)
+        .then(function(result) {
+            if (result.successful) {
+                imdbInfo.episodes[season] = result.episodes;
+                return _.bind(fetchShowEpisodes, _this)(horseman, imdbInfo, ++index);
+            } else {
+                throw result.error;
+            }
         });
 };
 
