@@ -7,6 +7,23 @@ var URI = require('urijs');
 var URITemplate = require('urijs/src/URITemplate');
 var Horseman = require('node-horseman');
 
+// workaround for 'Error: Failed to GET url:' issue
+Horseman.registerAction('_open', function(url) {
+    var openURL = function(url) {
+        return this
+            .open(url)
+            .catch(function(err) {
+                if (err.indexOf('Error: Failed to GET url:') != -1) {
+                    return openURL(url);
+                } else {
+                    throw err;
+                }
+            });
+    };
+
+    return openURL(url);
+});
+
 var trakttv = require('./trakttv.js');
 var mdb = require('./themoviedb.js');
 
@@ -34,7 +51,7 @@ var fetchInfo = function(horseman, imdbId) {
 
     return horseman
         .userAgent('Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0')
-        .open(url)
+        ._open(url)
         .evaluate(function() {
             var result = {
                 successful: true,
@@ -188,7 +205,7 @@ var fetchShowEpisodes = function(horseman, imdbInfo) {
 
             return horseman
                 .userAgent('Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0')
-                .open(url)
+                ._open(url)
                 .injectJs('node_modules/moment/min/moment.min.js')
                 .evaluate(function(expectedSeason) {
                     var result = {
@@ -214,6 +231,7 @@ var fetchShowEpisodes = function(horseman, imdbInfo) {
                     try {
                         // validate the page
                         if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
+                        if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (season: ' + $('#episode_top').text().replace(/[^\d]/g, '') + ')';
 
                         $('.list_item').each(function() {
                             var parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
