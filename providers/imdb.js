@@ -201,7 +201,7 @@ var fetchShowEpisodes = function(horseman, imdbInfo, index) {
 
     if (season == null) return;
 
-    var url = _this.SEASON_URL
+    var url = this.SEASON_URL
         .expand({ imdbId: imdbInfo._id, season: season })
         .toString();
 
