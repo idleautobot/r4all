@@ -98,7 +98,7 @@ var fetchSubtitle = function(horseman, parsed, imdbId, forceFetch, page) {
 
 LegendasDivx.prototype.fetchSubtitle = function(releaseName, imdbId, forceFetch) {
     // init
-    var horseman = new Horseman({ cookiesFile: 'cookies.txt' });
+    var horseman = new Horseman({ timeout: 30 * 1000, cookiesFile: 'cookies.txt' });
 
     var parsed = new Release(releaseName);
 

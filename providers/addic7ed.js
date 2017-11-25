@@ -45,7 +45,7 @@ Addic7ed.prototype.download = function(subtitleId) {
 
 Addic7ed.prototype.fetchShow = function(title, year) {
     // init
-    var horseman = new Horseman({ cookiesFile: 'cookies.txt' });
+    var horseman = new Horseman({ timeout: 30 * 1000, cookiesFile: 'cookies.txt' });
 
     var url = this.SHOW_LIST_URL.toString();
 
@@ -131,7 +131,7 @@ Addic7ed.prototype.fetchShow = function(title, year) {
 
 Addic7ed.prototype.fetchSubtitle = function(parsed, season, episode, addic7edId) {
     // init
-    var horseman = new Horseman({ cookiesFile: 'cookies.txt' });
+    var horseman = new Horseman({ timeout: 30 * 1000, cookiesFile: 'cookies.txt' });
 
     var url = this.SHOW_EPISODE_URL
         .expand({ addic7edId: addic7edId, season: season, episode: episode })

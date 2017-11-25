@@ -275,7 +275,7 @@ var loadPage = function(horseman, page) {
 RARBG.prototype.fetchReleases = function() {
     // init
     this.newReleases = {};
-    var horseman = new Horseman({ cookiesFile: 'cookies.txt' });
+    var horseman = new Horseman({ timeout: 30 * 1000, cookiesFile: 'cookies.txt' });
 
     var _this = this;
 

@@ -272,7 +272,7 @@ IMDb.prototype.resizeImage = function(imageUrl, size) {
 
 IMDb.prototype.fetchInfo = function(imdbId, type) {
     // init
-    var horseman = new Horseman({ cookiesFile: 'cookies.txt' });
+    var horseman = new Horseman({ timeout: 30 * 1000, cookiesFile: 'cookies.txt' });
 
     var _this = this;
 
