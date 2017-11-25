@@ -15,7 +15,7 @@ Horseman.registerAction('_open', function(url) {
         return _this
             .open(url)
             .catch(function(err) {
-                if (err.indexOf('Error: Failed to GET url:') != -1) {
+                if (err.message.indexOf('Error: Failed to GET url:') != -1) {
                     return openURL(url);
                 } else {
                     throw err;
@@ -233,7 +233,7 @@ var fetchShowEpisodes = function(horseman, imdbInfo) {
                     try {
                         // validate the page
                         if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
-                        if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (season: ' + $('#episode_top').text().replace(/[^\d]/g, '') + ')';
+                        if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (' + $('#episode_top').text() + ')';
 
                         $('.list_item').each(function() {
                             var parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
@@ -262,6 +262,7 @@ var fetchShowEpisodes = function(horseman, imdbInfo) {
                 .then(function(result) {
                     if (result.successful) {
                         imdbInfo.episodes[season] = result.episodes;
+                        return;
                     } else {
                         throw result.error;
                     }
