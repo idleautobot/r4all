@@ -80,7 +80,10 @@ function memoryUsage() {
         .then(function() {
             http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
                 debug('express server listening on port ' + app.get('port'));
-
+// return app.locals.db.getReleasesToVerify()
+//         .each(function(release) {
+//             return app.locals.providers.imdb.fetchInfo(release.imdbId, release.type)
+//         });
                 return (isProduction && app.locals.core.refresh());
             });
         })
