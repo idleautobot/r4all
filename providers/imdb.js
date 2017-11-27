@@ -316,10 +316,12 @@ IMDb.prototype.fetchInfo = function(imdbId, type) {
         .catch(function(err) {
             // workaround for 'Error: Failed to GET url:' issue
             if (err.message.startsWith('Failed to GET url:') || err.message.startsWith('Failed to load url')) {
-                debug('retry...');
                 horseman.close();
                 horseman = null;
-                return _this.fetchInfo(imdbId, type);
+                return Promise.delay(5 * 1000).then(function() {
+                    debug('retry...');
+                    return _this.fetchInfo(imdbId, type);
+                });
             } else {
                 if (_this.isOn) {
                     _this.isOn = false;
