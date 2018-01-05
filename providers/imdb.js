@@ -1,182 +1,251 @@
 'use strict';
 
-var debug = require('debug')('IMDb');
-var Promise = require('bluebird');
-var _ = require('lodash');
-var URI = require('urijs');
-var URITemplate = require('urijs/src/URITemplate');
-var Horseman = require('node-horseman');
+const debug = require('debug')('IMDb');
+const _ = require('lodash');
+const URI = require('urijs');
+const URITemplate = require('urijs/src/URITemplate');
+const puppeteer = require('puppeteer');
 
-var trakttv = require('./trakttv.js');
-var mdb = require('./themoviedb.js');
+const trakttv = require('./trakttv.js');
+const mdb = require('./themoviedb.js');
 
-var log = require('../logger.js');
+const log = require('../logger.js');
 
-var IMDb = function() {
-    this.URL = URI('http://akas.imdb.com');
-    this.TITLE_URL = URITemplate(this.URL.toString() + 'title/{imdbId}/combined');
-    this.SEASON_URL = URITemplate(this.URL.toString() + 'title/{imdbId}/episodes?season={season}');
-    this.TRAILER_URL = URITemplate(this.URL.toString() + 'video/imdb/{trailerId}/imdb/embed?autoplay=true&format=720p');
+let status = true;
+const URL = URI('http://akas.imdb.com');
+const TITLE_URL = URITemplate(URL.toString() + 'title/{imdbId}/combined');
+const SEASON_URL = URITemplate(URL.toString() + 'title/{imdbId}/episodes?season={season}');
+const TRAILER_URL = URITemplate(URL.toString() + 'video/imdb/{trailerId}/imdb/embed?autoplay=true&format=720p');
 
-    // status
-    this.isOn = true;
-};
-IMDb.prototype.constructor = IMDb;
+class IMDb {
+    static async fetch(imdbId, type) {
+        const browser = await puppeteer.launch({ headless: false });
+        const page = await browser.newPage();
 
-var fetchInfo = function(horseman, imdbId) {
-    var url = this.TITLE_URL
+        try {
+            let imdbInfo = fetchInfo(page, imdbId);
+            let mdbInfo = mdb.fetch(imdbId, type);
+            let trakttvInfo = trakttv.fetch(imdbId, type);
+
+            [imdbInfo, mdbInfo, trakttvInfo] = [await imdbInfo, await mdbInfo, await trakttvInfo];
+
+            if (!imdbInfo) return;
+
+            imdbInfo.trailer = imdbInfo.trailer && TRAILER_URL
+                .expand({ trailerId: imdbInfo.trailer })
+                .toString();
+
+            // mdbInfo
+            if (mdbInfo) {
+                imdbInfo.cover = mdbInfo.cover || imdbInfo.cover;
+                imdbInfo.backdrop = mdbInfo.backdrop;
+            }
+
+            // trakttvInfo
+            if (trakttvInfo) {
+                imdbInfo.trailer = trakttvInfo.trailer || imdbInfo.trailer;
+
+                if (trakttvInfo.state) {
+                    imdbInfo.state = trakttvInfo.state;
+                }
+            }
+
+            if (!status) {
+                status = true;
+                debug('seems to be back');
+            }
+
+            await browser.close();
+            return imdbInfo;
+        } catch (err) {
+            if (status) {
+                status = false;
+                log.error('[IMDb]', err);
+            }
+
+            await browser.close();
+            return null;
+        }
+    }
+
+    static resizeImage(imageUrl, size) {
+        var toSize;
+
+        switch (size) {
+            case 'thumb':
+                toSize = '_V1._SX300.jpg';
+                break;
+            case 'medium':
+                toSize = '_V1._SX600.jpg';
+                break;
+            default:
+                toSize = '_V1._SY0.jpg';
+        }
+
+        return imageUrl.replace(/_V1.*?\.jpg/i, toSize);
+    }
+
+    static getURL() {
+        return URL;
+    }
+
+    static getTitleURL() {
+        return TITLE_URL;
+    }
+
+    static isOn() {
+        return status;
+    }
+}
+
+async function fetchInfo(page, imdbId) {
+    var url = TITLE_URL
         .expand({ imdbId: imdbId })
         .toString();
 
     debug(url);
 
-    var _this = this;
+    await page.goto(url);
 
-    return horseman
-        .userAgent('Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0')
-        .open(url)
-        .evaluate(function() {
-            var result = {
-                successful: true,
-                imdbInfo: {}
-            };
-            var info = result.imdbInfo;
+    const result = await page.evaluate(() => {
+        var result = {
+            successful: true,
+            imdbInfo: {}
+        };
+        var info = result.imdbInfo;
 
-            var regex = function(str, regex) {
-                try {
-                    var match = str.match(regex);
-                    match.shift(); // remove original string that was parsed
-
-                    if (match.length == 1)
-                        return match[0];
-                    else
-                        return match;
-                } catch (err) {
-                    return null;
-                }
-            };
-
-            var getAKAs = function() {
-                var akas = [];
-
-                $('.info h5:contains("Also Known As:")').next('.info-content').contents().each(function(i, el) {
-                    if (el.nodeType == 3) { // TextNode
-                        var aka = regex($(this).text().trim(), /^"\s*(.+?)\s*"/);
-
-                        if (aka) {
-                            akas.push(aka);
-                        }
-                    }
-                });
-
-                return akas;
-            };
-
-            var getSeasons = function() {
-                var seasons = [];
-
-                $('.info h5:contains("Seasons:")').next('.info-content').find('a').each(function() {
-                    var season = parseInt($(this).text());
-
-                    if (season) {
-                        seasons.push(season);
-                    }
-                });
-
-                return seasons;
-            };
-
-            var getPlot = function() {
-                var plot = '';
-
-                $('.info h5:contains("Plot:")').next('.info-content').contents().each(function() {
-                    var chunk = $(this).text();
-
-                    if (['Full summary', 'Full synopsis', 'Add synopsis', 'See more'].indexOf(chunk) != -1 || chunk.indexOf('»') != -1) {
-                        return false;
-                    }
-
-                    plot += chunk;
-                });
-
-                return plot.split('|')[0].trim();
-            };
-
-            var getGenres = function() {
-                var genres = [];
-
-                $('.info h5:contains("Genre:")').next('.info-content').find('a[href^="/Sections/Genres/"]').each(function() {
-                    genres.push($(this).text());
-                });
-
-                return genres;
-            };
-
+        var regex = function(str, regex) {
             try {
-                // validate the page
-                if (!$('#tn15').length) throw 'site validation failed (fetchInfo)';
+                var match = str.match(regex);
+                match.shift(); // remove original string that was parsed
 
-                info._id = regex($('link[href$="combined"]').attr('href'), /imdb\.com\/title\/(tt\d+)/i);
-                info.title = regex($('title').text(), /^\s*(.+?)\s*\(.*?\d{4}.*?\)$/);
-                info.akas = getAKAs();
-
-                if ($('.info h5:contains("Seasons:")').length) {
-                    info.title = info.title.replace(/^\"|\"$/g, '');
-                    info.type = 'show';
-                    info.seasons = getSeasons();
-                    info.numSeasons = 1;
-                } else {
-                    info.type = 'movie';
-                }
-
-                info.year = parseInt(regex($('title').text(), /\(.*?(\d{4}).*?\)$/));
-                info.plot = getPlot();
-                info.genres = getGenres();
-                info.runtime = parseInt(regex($('.info h5:contains("Runtime:")').next('.info-content').text(), /^.*?(\d+)/)) || null;
-                info.rating = parseFloat($('#tn15rating .general .starbar-meta b').text().split('/10')[0]) || null;
-                info.votes = parseInt($('#tn15rating .general .starbar-meta a').text().split(' ')[0].replace(/,/g, '')) || null;
-
-                var cover = $('#primary-poster').attr('src');
-                if (cover && cover.indexOf('media-imdb.com') != -1) {
-                    info.cover = cover.replace(/_V1.*?\.jpg/i, '_V1._SY0.jpg');
-                }
-
-                info.trailer = $('#title-media-strip').find('a[href^="/video/"]').first().attr('data-video');
+                if (match.length == 1)
+                    return match[0];
+                else
+                    return match;
             } catch (err) {
-                result.successful = false;
-                result.error = err;
+                return null;
             }
+        };
 
-            return result;
-        })
-        .then(function(result) {
-            var imdbInfo = result.imdbInfo;
+        var getAKAs = function() {
+            var akas = [];
 
-            if (result.successful) {
-                // data validation
-                if (!imdbInfo._id || !imdbInfo.title || !imdbInfo.year) {
-                    return;
+            $('.info h5:contains("Also Known As:")').next('.info-content').contents().each(function(i, el) {
+                if (el.nodeType == 3) { // TextNode
+                    var aka = regex($(this).text().trim(), /^"\s*(.+?)\s*"/);
+
+                    if (aka) {
+                        akas.push(aka);
+                    }
+                }
+            });
+
+            return akas;
+        };
+
+        var getSeasons = function() {
+            var seasons = [];
+
+            $('.info h5:contains("Seasons:")').next('.info-content').find('a').each(function() {
+                var season = parseInt($(this).text());
+
+                if (season) {
+                    seasons.push(season);
+                }
+            });
+
+            return seasons;
+        };
+
+        var getPlot = function() {
+            var plot = '';
+
+            $('.info h5:contains("Plot:")').next('.info-content').contents().each(function() {
+                var chunk = $(this).text();
+
+                if (['Full summary', 'Full synopsis', 'Add synopsis', 'See more'].indexOf(chunk) != -1 || chunk.indexOf('»') != -1) {
+                    return false;
                 }
 
-                if (imdbInfo.type == 'movie') {
-                    return imdbInfo;
-                } else {
-                    return _.bind(fetchShowEpisodes, _this)(horseman, imdbInfo);
-                }
+                plot += chunk;
+            });
+
+            return plot.split('|')[0].trim();
+        };
+
+        var getGenres = function() {
+            var genres = [];
+
+            $('.info h5:contains("Genre:")').next('.info-content').find('a[href^="/Sections/Genres/"]').each(function() {
+                genres.push($(this).text());
+            });
+
+            return genres;
+        };
+
+        try {
+            // validate the page
+            if (!$('#tn15').length) throw 'site validation failed (fetchInfo)';
+
+            info._id = regex($('link[href$="combined"]').attr('href'), /imdb\.com\/title\/(tt\d+)/i);
+            info.title = regex($('title').text(), /^\s*(.+?)\s*\(.*?\d{4}.*?\)$/);
+            info.akas = getAKAs();
+
+            if ($('.info h5:contains("Seasons:")').length) {
+                info.title = info.title.replace(/^\"|\"$/g, '');
+                info.type = 'show';
+                info.seasons = getSeasons();
+                info.numSeasons = 1;
             } else {
-                throw result.error;
+                info.type = 'movie';
             }
-        });
-};
 
-var fetchShowEpisodes = function(horseman, imdbInfo) {
+            info.year = parseInt(regex($('title').text(), /\(.*?(\d{4}).*?\)$/));
+            info.plot = getPlot();
+            info.genres = getGenres();
+            info.runtime = parseInt(regex($('.info h5:contains("Runtime:")').next('.info-content').text(), /^.*?(\d+)/)) || null;
+            info.rating = parseFloat($('#tn15rating .general .starbar-meta b').text().split('/10')[0]) || null;
+            info.votes = parseInt($('#tn15rating .general .starbar-meta a').text().split(' ')[0].replace(/,/g, '')) || null;
+
+            var cover = $('#primary-poster').attr('src');
+            if (cover && cover.indexOf('media-imdb.com') != -1) {
+                info.cover = cover.replace(/_V1.*?\.jpg/i, '_V1._SY0.jpg');
+            }
+
+            info.trailer = $('#title-media-strip').find('a[href^="/video/"]').first().attr('data-video');
+        } catch (err) {
+            result.successful = false;
+            result.error = err;
+        }
+
+        return result;
+    });
+
+    const imdbInfo = result.imdbInfo;
+
+    if (result.successful) {
+        // data validation
+        if (!imdbInfo._id || !imdbInfo.title || !imdbInfo.year) {
+            return;
+        }
+
+        if (imdbInfo.type == 'movie') {
+            return imdbInfo;
+        } else {
+            return await fetchShowEpisodes(page, imdbInfo);
+        }
+    } else {
+        throw result.error;
+    }
+}
+
+async function fetchShowEpisodes(page, imdbInfo) {
     imdbInfo.episodes = {};
-
-    var _this = this;
 
     return Promise.resolve(imdbInfo.seasons)
         .each(function(season) {
-            var url = _this.SEASON_URL
+            var url = SEASON_URL
                 .expand({ imdbId: imdbInfo._id, season: season })
                 .toString();
 
@@ -253,87 +322,6 @@ var fetchShowEpisodes = function(horseman, imdbInfo) {
             delete imdbInfo.seasons;
             return imdbInfo;
         });
-};
+}
 
-IMDb.prototype.resizeImage = function(imageUrl, size) {
-    var toSize;
-
-    switch (size) {
-        case 'thumb':
-            toSize = '_V1._SX300.jpg';
-            break;
-        case 'medium':
-            toSize = '_V1._SX600.jpg';
-            break;
-        default:
-            toSize = '_V1._SY0.jpg';
-    }
-
-    return imageUrl.replace(/_V1.*?\.jpg/i, toSize);
-};
-
-IMDb.prototype.fetchInfo = function(imdbId, type) {
-    // init
-    var horseman = new Horseman({ cookiesFile: 'cookies.txt' });
-
-    var _this = this;
-
-    return Promise.join(_.bind(fetchInfo, this)(horseman, imdbId), mdb.fetch(imdbId, type), trakttv.fetch(imdbId, type), function(imdbInfo, mdbInfo, trakttvInfo) {
-            if (!imdbInfo) return;
-
-            imdbInfo.trailer = _this.TRAILER_URL
-                .expand({ trailerId: imdbInfo.trailer })
-                .toString();
-
-            // mdbInfo
-            if (mdbInfo) {
-                imdbInfo.cover = mdbInfo.cover || imdbInfo.cover;
-                imdbInfo.backdrop = mdbInfo.backdrop;
-            }
-
-            // trakttvInfo
-            if (trakttvInfo) {
-                imdbInfo.trailer = trakttvInfo.trailer || imdbInfo.trailer;
-
-                if (trakttvInfo.state) {
-                    imdbInfo.state = trakttvInfo.state;
-                }
-            }
-
-            return imdbInfo;
-        })
-        .then(function(imdbInfo) {
-            if (!_this.isOn) {
-                _this.isOn = true;
-                debug('seems to be back');
-            }
-
-            horseman.close();
-            horseman = null;
-
-            return imdbInfo;
-        })
-        .catch(function(err) {
-            // workaround for 'Error: Failed to GET url:' issue
-            if (err.message.startsWith('Failed to GET url:') || err.message.startsWith('Failed to load url')) {
-                horseman.close();
-                horseman = null;
-                return Promise.delay(5 * 1000).then(function() {
-                    debug('retry...');
-                    return _this.fetchInfo(imdbId, type);
-                });
-            } else {
-                if (_this.isOn) {
-                    _this.isOn = false;
-                    log.error('[IMDb] ', err);
-                }
-
-                horseman.close();
-                horseman = null;
-
-                return null;
-            }
-        });
-};
-
-module.exports = new IMDb;
+module.exports = IMDb;

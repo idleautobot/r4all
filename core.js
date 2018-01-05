@@ -1,16 +1,16 @@
 'use strict';
 
-var debug = require('debug')('Core');
-var Promise = require('bluebird');
-var _ = require('lodash');
-var moment = require('moment');
-var Release = require('scene-release-parser');
+const debug = require('debug')('Core');
+const Promise = require('bluebird');
+const _ = require('lodash');
+const moment = require('moment');
+const Release = require('scene-release-parser');
 
-var log = require('./logger.js');
-var settings = require('./settings.js');
-var common = require('./common.js');
-var db = require('./database.js');
-var providers = {
+const log = require('./logger.js');
+const settings = require('./settings.js');
+const common = require('./common.js');
+const db = require('./database.js');
+const providers = {
     rarbg: require('./providers/rarbg.js'),
     imdb: require('./providers/imdb.js'),
     addic7ed: require('./providers/addic7ed.js'),
