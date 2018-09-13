@@ -8,17 +8,18 @@ const puppeteer = require('puppeteer');
 const log = require('../logger.js');
 
 let status = true;
-const URL = URI('https://rarbg.to');
+const URL = URI('https://rarbg.is');
 
-class RARBG {
-    static async fetchReleases(lastRelease, lastPage) {
+const RARBG = {
+    fetchReleases: async function(lastRelease, lastPage) {
         // init
         this.newReleases = {};
 
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
+        let browser = null;
 
         try {
+            browser = await puppeteer.launch();
+            const page = await browser.newPage();
             await _.bind(loadPage, this)(page, lastRelease, lastPage);
 
             if (!status) {
@@ -31,19 +32,17 @@ class RARBG {
         } catch (err) {
             if (status) {
                 status = false;
-                log.error('[RARBG]', err);
+                log.warn('[RARBG]', err);
             }
 
-            await browser.close();
+            if (browser) await browser.close();
             return false;
         }
-    }
-
-    static getURL() {
+    },
+    getURL: function() {
         return URL;
-    }
-
-    static isOn() {
+    },
+    isOn: function() {
         return status;
     }
 }
@@ -77,16 +76,16 @@ async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
     }
 
     const pageLoaded = await page.evaluate(() => {
-        var pageLoaded;
+        let pageLoaded;
 
         if ($('.lista2t').length) {
             pageLoaded = 'torrents';
+        } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
+            pageLoaded = 'verifying';
+        } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
+            pageLoaded = 'retry';
         } else if ($('#solve_string').length) {
             pageLoaded = 'captcha';
-        } else if ($('a[href="/threat_defence.php?defence=1"]').href) {
-            pageLoaded = 'verify';
-        } else if ($('.content-rounded').length) {
-            pageLoaded = 'verifying';
         } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
             pageLoaded = 'banned';
         } else {
@@ -100,24 +99,24 @@ async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
         case 'torrents':
             const done = await _.bind(getReleasesFromPage, this)(page, lastRelease);
 
-            if (done) {
+            if (1 || done) {
                 return;
             } else {
                 await sleep(((Math.random() * 30) + 30) * 1000);
                 return await _.bind(loadPage, this)(page, lastRelease, ++pageNumber);
             }
+        case 'verifying':
+            debug('verifying the browser...');
+            await sleep(10 * 1000);
+            return await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber, ++attempt);
+        case 'retry':
+            debug('retry verifying the browser...');
+            await verifyBrowser(page);
+            return await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber);
         case 'captcha':
             debug('solving captcha...');
             await solveCaptcha(page);
             return await _.bind(loadPage, this)(page, lastRelease, pageNumber);
-        case 'verify':
-            debug('triggering verify the browser...');
-            await verifyBrowser(page);
-            return await _.bind(loadPage, this)(page, lastRelease, pageNumber);
-        case 'verifying':
-            debug('verifying the browser...');
-            await sleep(5 * 1000);
-            return await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber, ++attempt);
         case 'banned':
             debug('banned...');
             throw ('banned');
@@ -133,16 +132,16 @@ async function getReleasesFromPage(page, lastRelease) {
     await page.addScriptTag({ path: 'node_modules/moment-timezone/builds/moment-timezone-with-data.min.js' });
 
     const result = await page.evaluate((lastRelease) => {
-        var page = parseInt($('#pager_links').find('b').text());
-        var result = {
+        const page = parseInt($('#pager_links').find('b').text());
+        const result = {
             successful: true,
             releases: [],
             done: false
         };
 
-        var regex = function(str, regex) {
+        function regex(str, regex) {
             try {
-                var match = str.match(regex);
+                const match = str.match(regex);
                 match.shift(); // remove original string that was parsed
 
                 if (match.length == 1)
@@ -152,16 +151,16 @@ async function getReleasesFromPage(page, lastRelease) {
             } catch (err) {
                 return null;
             }
-        };
+        }
 
         try {
             // loop through every row
             $('.lista2t .lista2').each(function() {
-                var column1 = $(this).find('.lista').eq(0);
-                var column2 = $(this).find('.lista').eq(1);
-                var column3 = $(this).find('.lista').eq(2);
+                const column1 = $(this).find('.lista').eq(0);
+                const column2 = $(this).find('.lista').eq(1);
+                const column3 = $(this).find('.lista').eq(2);
 
-                var release = {
+                const release = {
                     _id: null,
                     name: $(column2).find('a[href^="/torrent/"]').text().trim().replace(/\[.+\]$/, ''),
                     category: parseInt(regex($(column1).find('a[href^="/torrents.php?category="]').attr('href'), /\/torrents\.php\?category=(\d+)/i)),
@@ -173,12 +172,12 @@ async function getReleasesFromPage(page, lastRelease) {
                 };
 
                 // validation
-                if (release.name && [41, 44, 45].indexOf(release.category) != -1 && moment(release.pubdate, 'YYYY-MM-DD HH:mm:ss').isValid()) {
-                    var pubdate = moment.tz(release.pubdate, 'YYYY-MM-DD HH:mm:ss', 'Europe/Berlin').tz('Europe/Lisbon');
+                if (release.name && [41, 44, 45].indexOf(release.category) !== -1 && moment(release.pubdate, 'YYYY-MM-DD HH:mm:ss').isValid()) {
+                    const pubdate = moment.tz(release.pubdate, 'YYYY-MM-DD HH:mm:ss', 'Europe/Berlin').tz('Europe/Lisbon');
 
                     // define stop point
                     if (lastRelease && pubdate.isSameOrBefore(lastRelease.pubdate)) {
-                        if (release.name == lastRelease.name || pubdate.isBefore(lastRelease.pubdate)) {
+                        if (release.name === lastRelease.name || pubdate.isBefore(lastRelease.pubdate)) {
                             result.debug = 'site scraping done at ' + pubdate.format('YYYY-MM-DD HH:mm:ss');
                             result.done = true;
                             return false;
@@ -229,8 +228,10 @@ async function getReleasesFromPage(page, lastRelease) {
 async function solveCaptcha(page) {
     await page.addScriptTag({ path: 'providers/gocr.js' });
 
+    const navigationPromise = page.waitForNavigation();
+
     await page.evaluate(() => {
-        var img = $('img[src^="/captcha2/"]')[0];
+        var img = $('img[src^="/threat_captcha.php"]')[0];
 
         var canvas = document.createElement('canvas');
         var ctx = canvas.getContext('2d');
@@ -266,12 +267,11 @@ async function solveCaptcha(page) {
         $('form').submit();
     });
 
-    await page.waitForNavigation();
+    await navigationPromise;
 }
 
 async function verifyBrowser(page) {
     await page.click('a[href="/threat_defence.php?defence=1"]');
-    await page.waitForNavigation();
 }
 
 async function unknownPage(page) {

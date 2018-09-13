@@ -1,15 +1,15 @@
 'use strict';
 
-var debug = require('debug')('TraktTv');
-var Promise = require('bluebird');
-var request = require('request');
-var URI = require('urijs');
+const debug = require('debug')('TraktTv');
+const Promise = require('bluebird');
+const request = require('request');
+const URI = require('urijs');
 
-var log = require('../logger.js');
+const log = require('../logger.js');
 
-var API_ENDPOINT = URI('https://api-v2launch.trakt.tv');
-var CLIENT_ID = 'e789bf52a39f68bb829f86a78aa61e2f03fff1415079ce802c2b83a6ac9592ea';
-var STATUS_CODES = {
+const API_ENDPOINT = URI('https://api-v2launch.trakt.tv');
+const CLIENT_ID = 'e789bf52a39f68bb829f86a78aa61e2f03fff1415079ce802c2b83a6ac9592ea';
+const STATUS_CODES = {
     '400': 'Bad Request - request couldn\'t be parsed',
     '401': 'Unauthorized - OAuth must be provided',
     '403': 'Forbidden - invalid API key or unapproved app',
@@ -26,13 +26,33 @@ var STATUS_CODES = {
     '522': 'Service Unavailable - Cloudflare error'
 };
 
-var TraktTv = function() {
-    this.URL = URI('https://twitter.com/traktapi');
+let status = true;
+const URL = URI('https://twitter.com/traktapi');
 
-    // status
-    this.isOn = true;
+const TraktTv = {
+    fetch: async function(imdbId, type) {
+        return get(type + 's/' + imdbId, {
+                extended: 'full'
+            })
+            .then(fetchMedia)
+            .then(function(media) {
+                if (!status) {
+                    status = true;
+                    debug('seems to be back');
+                }
+
+                return media;
+            })
+            .catch(function(err) {
+                if (status) {
+                    status = false;
+                    log.warn('[TraktTv]', err);
+                }
+
+                return null;
+            });
+    }
 };
-TraktTv.prototype.constructor = TraktTv;
 
 var fetchMedia = function(obj) {
     var media = {};
@@ -87,29 +107,4 @@ var get = function(endpoint, getVariables) {
     });
 };
 
-TraktTv.prototype.fetch = function(imdbId, type) {
-    var _this = this;
-
-    return get(type + 's/' + imdbId, {
-            extended: 'full'
-        })
-        .then(fetchMedia)
-        .then(function(media) {
-            if (!_this.isOn) {
-                _this.isOn = true;
-                debug('seems to be back');
-            }
-
-            return media;
-        })
-        .catch(function(err) {
-            if (_this.isOn) {
-                _this.isOn = false;
-                log.error('[TraktTv] ', err);
-            }
-
-            return null;
-        });
-};
-
-module.exports = new TraktTv;
+module.exports = TraktTv;

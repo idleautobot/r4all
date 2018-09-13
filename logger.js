@@ -1,62 +1,58 @@
-var path = require('path');
-var winston = require('winston');
-var moment = require('moment-timezone');
+const { createLogger, addColors, format, transports } = require('winston');
+const DailyRotateFile = require('winston-daily-rotate-file');
+const moment = require('moment-timezone');
 
-// log levels
-var winston_config = {
+// Set up logger
+const myCustomLevels = {
     levels: {
-        error: 0,
-        warn: 1,
-        info: 2
+        fatal: 0,
+        crit: 1,
+        warn: 2,
+        info: 3,
+        debug: 4,
+        trace: 5
     },
     colors: {
-        error: 'red',
-        warn: 'yellow',
-        info: 'green'
+        trace: 'white',
+        debug: 'greenBG',
+        info: 'cyanBG',
+        warn: 'yellowBG',
+        crit: 'magentaBG',
+        fatal: 'redBG'
     }
 };
 
-// Extend a winston by making it expand errors when passed in as the 
-// second argument (the first argument is the log level).
-function expandErrors(logger) {
-    var oldLogFunc = logger.log;
+const timestamp = format((info, opts) => {
+    info.timestamp = moment().tz('Europe/Lisbon').format('YYYY-MM-DD HH:mm:ss');
+    return info;
+});
 
-    logger.log = function() {
-        var args = Array.prototype.slice.call(arguments, 0);
-
-        if (args.length >= 2 && args[2] instanceof Error) {
-            args[2] = args[2].stack;
-        }
-
-        return oldLogFunc.apply(this, args);
-    };
-
-    return logger;
-}
-
-var logger = expandErrors(new(winston.Logger)({
+const logger = createLogger({
+    level: 'trace',
+    levels: myCustomLevels.levels,
     transports: [
-        new(winston.transports.Console)({
-            timestamp: function() {
-                return moment().tz('Europe/Lisbon').format('YYYY-MM-DD HH:mm:ss');
-            },
-            colorize: true
+        new transports.Console({
+            format: format.combine(
+                timestamp(),
+                format.colorize(),
+                format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
+            ),
         }),
-        new(require('winston-daily-rotate-file'))({
-            filename: 'server.log',
-            datePattern: '.yyyy-MM'
+        new DailyRotateFile({
+            dirname: './app',
+            filename: '%DATE%_debug.log',
+            datePattern: 'YYYY-MM',
+            level: 'fatal',
+            handleExceptions: true,
+            format: format.combine(
+                format.timestamp(),
+                format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)
+            )
         })
     ],
-    levels: winston_config.levels,
-    colors: winston_config.colors,
-}));
-
-process.on('uncaughtException', function(err) {
-    if (err.message == 'read ECONNRESET' || err.message.endsWith(' == 0')) {
-        // ignore - from the request module, not correctly handled
-    } else {
-        logger.error('uncaughtException', err);
-    }
+    exitOnError: false
 });
+
+addColors(myCustomLevels.colors);
 
 module.exports = logger;

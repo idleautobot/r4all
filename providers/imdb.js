@@ -12,17 +12,21 @@ const mdb = require('./themoviedb.js');
 const log = require('../logger.js');
 
 let status = true;
-const URL = URI('http://akas.imdb.com');
-const TITLE_URL = URITemplate(URL.toString() + 'title/{imdbId}/combined');
+const URL = URI('https://www.imdb.com');
+const TITLE_URL = URITemplate(URL.toString() + 'title/{imdbId}/');
 const SEASON_URL = URITemplate(URL.toString() + 'title/{imdbId}/episodes?season={season}');
 const TRAILER_URL = URITemplate(URL.toString() + 'video/imdb/{trailerId}/imdb/embed?autoplay=true&format=720p');
 
-class IMDb {
-    static async fetch(imdbId, type) {
-        const browser = await puppeteer.launch({ headless: false });
-        const page = await browser.newPage();
+const IMDb = {
+    fetch: async function(imdbId, type) {
+        let browser = null;
 
         try {
+            browser = await puppeteer.launch({
+                args: ['--lang=en']
+            });
+            const page = await browser.newPage();
+
             let imdbInfo = fetchInfo(page, imdbId);
             let mdbInfo = mdb.fetch(imdbId, type);
             let trakttvInfo = trakttv.fetch(imdbId, type);
@@ -60,15 +64,14 @@ class IMDb {
         } catch (err) {
             if (status) {
                 status = false;
-                log.error('[IMDb]', err);
+                log.warn('[IMDb] ' + err.stack);
             }
 
-            await browser.close();
+            if (browser) await browser.close();
             return null;
         }
-    }
-
-    static resizeImage(imageUrl, size) {
+    },
+    resizeImage: function(imageUrl, size) {
         var toSize;
 
         switch (size) {
@@ -80,26 +83,24 @@ class IMDb {
                 break;
             default:
                 toSize = '_V1._SY0.jpg';
+                break;
         }
 
         return imageUrl.replace(/_V1.*?\.jpg/i, toSize);
-    }
-
-    static getURL() {
+    },
+    getURL: function() {
         return URL;
-    }
-
-    static getTitleURL() {
+    },
+    getTitleURL: function() {
         return TITLE_URL;
-    }
-
-    static isOn() {
+    },
+    isOn: function() {
         return status;
     }
 }
 
 async function fetchInfo(page, imdbId) {
-    var url = TITLE_URL
+    const url = TITLE_URL
         .expand({ imdbId: imdbId })
         .toString();
 
@@ -108,13 +109,13 @@ async function fetchInfo(page, imdbId) {
     await page.goto(url);
 
     const result = await page.evaluate(() => {
-        var result = {
+        const result = {
             successful: true,
             imdbInfo: {}
         };
-        var info = result.imdbInfo;
+        const info = result.imdbInfo;
 
-        var regex = function(str, regex) {
+        function regex(str, regex) {
             try {
                 var match = str.match(regex);
                 match.shift(); // remove original string that was parsed
@@ -126,94 +127,42 @@ async function fetchInfo(page, imdbId) {
             } catch (err) {
                 return null;
             }
-        };
+        }
 
-        var getAKAs = function() {
-            var akas = [];
-
-            $('.info h5:contains("Also Known As:")').next('.info-content').contents().each(function(i, el) {
-                if (el.nodeType == 3) { // TextNode
-                    var aka = regex($(this).text().trim(), /^"\s*(.+?)\s*"/);
-
-                    if (aka) {
-                        akas.push(aka);
-                    }
-                }
-            });
-
-            return akas;
-        };
-
-        var getSeasons = function() {
-            var seasons = [];
-
-            $('.info h5:contains("Seasons:")').next('.info-content').find('a').each(function() {
-                var season = parseInt($(this).text());
-
-                if (season) {
-                    seasons.push(season);
-                }
-            });
-
-            return seasons;
-        };
-
-        var getPlot = function() {
-            var plot = '';
-
-            $('.info h5:contains("Plot:")').next('.info-content').contents().each(function() {
-                var chunk = $(this).text();
-
-                if (['Full summary', 'Full synopsis', 'Add synopsis', 'See more'].indexOf(chunk) != -1 || chunk.indexOf('»') != -1) {
-                    return false;
-                }
-
-                plot += chunk;
-            });
-
-            return plot.split('|')[0].trim();
-        };
-
-        var getGenres = function() {
-            var genres = [];
-
-            $('.info h5:contains("Genre:")').next('.info-content').find('a[href^="/Sections/Genres/"]').each(function() {
-                genres.push($(this).text());
-            });
-
-            return genres;
-        };
+        function getRuntime(str) {
+            const parsed = str.match(/(?:(\d+)h\s?)?(\d+)min/);
+            return parsed && (parseInt(parsed[1] || 0) * 60 + parseInt(parsed[2]));
+        }
 
         try {
             // validate the page
-            if (!$('#tn15').length) throw 'site validation failed (fetchInfo)';
+            if (!$('#title-overview-widget').length) throw new Error('site validation failed (fetchInfo)');
 
-            info._id = regex($('link[href$="combined"]').attr('href'), /imdb\.com\/title\/(tt\d+)/i);
-            info.title = regex($('title').text(), /^\s*(.+?)\s*\(.*?\d{4}.*?\)$/);
-            info.akas = getAKAs();
+            info._id = regex($('link[href^="https://www.imdb.com/title/"]').attr('href'), /https:\/\/www\.imdb\.com\/title\/(tt\d+)/i);
+            info.title = $('#title-overview-widget .title_wrapper h1').contents().filter(function() { return this.nodeType == 3; }).text().trim();
 
-            if ($('.info h5:contains("Seasons:")').length) {
-                info.title = info.title.replace(/^\"|\"$/g, '');
+            if ($('#title-episode-widget').length) {
                 info.type = 'show';
-                info.seasons = getSeasons();
-                info.numSeasons = 1;
+                info.year = Math.min.apply(Math, $('#title-episode-widget a[href^="/title/tt0903747/episodes?year="]').map(function() { return $(this).text(); }).get());
+                info.seasons = $('#title-episode-widget a[href^="/title/tt0903747/episodes?season="]').map(function() { return $(this).text(); }).get();
+                info.numSeasons = Math.max.apply(Math, info.seasons);
             } else {
                 info.type = 'movie';
+                info.year = parseInt($('#titleYear > a').text());
             }
 
-            info.year = parseInt(regex($('title').text(), /\(.*?(\d{4}).*?\)$/));
-            info.plot = getPlot();
-            info.genres = getGenres();
-            info.runtime = parseInt(regex($('.info h5:contains("Runtime:")').next('.info-content').text(), /^.*?(\d+)/)) || null;
-            info.rating = parseFloat($('#tn15rating .general .starbar-meta b').text().split('/10')[0]) || null;
-            info.votes = parseInt($('#tn15rating .general .starbar-meta a').text().split(' ')[0].replace(/,/g, '')) || null;
+            info.plot = $('#title-overview-widget .summary_text').text().trim();
+            info.genres = $('#title-overview-widget [itemprop="genre"]').map(function() { return $(this).text(); }).get();
+            info.runtime = getRuntime($('#title-overview-widget [itemprop="duration"]').text().trim());
+            info.rating = parseFloat($('#title-overview-widget [itemprop="ratingValue"]').text());
+            info.votes = parseFloat($('#title-overview-widget [itemprop="ratingCount"]').text().replace(/,/g, ''));
 
-            var cover = $('#primary-poster').attr('src');
-            if (cover && cover.indexOf('media-imdb.com') != -1) {
+            const cover = $('#title-overview-widget .poster [itemprop="image"]').attr('src');
+            if (cover && cover.indexOf('media-amazon.com') !== -1) {
                 info.cover = cover.replace(/_V1.*?\.jpg/i, '_V1._SY0.jpg');
             }
 
-            info.trailer = $('#title-media-strip').find('a[href^="/video/"]').first().attr('data-video');
+            info.trailer = $('#title-overview-widget [itemprop="trailer"]').attr('data-video');
         } catch (err) {
             result.successful = false;
             result.error = err;
@@ -225,9 +174,10 @@ async function fetchInfo(page, imdbId) {
     const imdbInfo = result.imdbInfo;
 
     if (result.successful) {
+        console.log(result);
         // data validation
         if (!imdbInfo._id || !imdbInfo.title || !imdbInfo.year) {
-            return;
+            return null;
         }
 
         if (imdbInfo.type == 'movie') {
@@ -236,92 +186,85 @@ async function fetchInfo(page, imdbId) {
             return await fetchShowEpisodes(page, imdbInfo);
         }
     } else {
-        throw result.error;
+        throw new Error(result.error);
     }
 }
 
 async function fetchShowEpisodes(page, imdbInfo) {
+    imdbInfo.seasons = _.sortBy(imdbInfo.seasons);
     imdbInfo.episodes = {};
 
-    return Promise.resolve(imdbInfo.seasons)
-        .each(function(season) {
-            var url = SEASON_URL
-                .expand({ imdbId: imdbInfo._id, season: season })
-                .toString();
+    for (const season of imdbInfo.seasons) {
+        const url = SEASON_URL
+            .expand({ imdbId: imdbInfo._id, season: season })
+            .toString();
 
-            if (season > imdbInfo.numSeasons) {
-                imdbInfo.numSeasons = season;
+        debug(url);
+
+        await page.goto(url);
+
+        await page.addScriptTag({ path: 'node_modules/moment/min/moment.min.js' });
+
+        const result = await page.evaluate((expectedSeason) => {
+            const result = {
+                successful: true,
+                episodes: {}
+            };
+            const episodes = result.episodes;
+
+            function regex(str, regex) {
+                try {
+                    const match = str.match(regex);
+                    match.shift(); // remove original string that was parsed
+
+                    if (match.length == 1)
+                        return match[0];
+                    else
+                        return match;
+                } catch (err) {
+                    return null;
+                }
             }
 
-            debug(url);
+            try {
+                // validate the page
+                if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
+                if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (' + $('#episode_top').text() + ')';
 
-            return horseman
-                .userAgent('Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0')
-                .open(url)
-                .injectJs('node_modules/moment/min/moment.min.js')
-                .evaluate(function(expectedSeason) {
-                    var result = {
-                        successful: true,
-                        episodes: {}
-                    };
-                    var episodes = result.episodes;
+                $('#episodes_content .list_item').each(function() {
+                    const parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
 
-                    var regex = function(str, regex) {
-                        try {
-                            var match = str.match(regex);
-                            match.shift(); // remove original string that was parsed
+                    if (parsed) {
+                        const season = parseInt(parsed[0]);
+                        const episode = parseInt(parsed[1]);
+                        const aired = $(this).find('.airdate').text().trim();
 
-                            if (match.length == 1)
-                                return match[0];
-                            else
-                                return match;
-                        } catch (err) {
-                            return null;
-                        }
-                    };
+                        if (expectedSeason != season) throw 'unexpected season, expecting \'' + expectedSeason + '\' and got \'' + season + '\'';
 
-                    try {
-                        // validate the page
-                        if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
-                        if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (' + $('#episode_top').text() + ')';
+                        const ep = episodes[episode] = {};
 
-                        $('.list_item').each(function() {
-                            var parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
-
-                            if (parsed) {
-                                var season = parseInt(parsed[0]);
-                                var episode = parseInt(parsed[1]);
-                                var aired = $(this).find('.airdate').text().trim();
-
-                                if (expectedSeason != season) throw 'unexpected season, expecting \'' + expectedSeason + '\' and got \'' + season + '\'';
-
-                                var ep = episodes[episode] = {};
-
-                                ep.title = $(this).find('[itemprop="name"]').text().trim();
-                                ep.aired = moment(aired, 'D MMM. YYYY').isValid() && moment(aired, 'D MMM. YYYY').toDate();
-                                ep.description = $(this).find('.item_description').text().trim();
-                            }
-                        });
-                    } catch (err) {
-                        result.successful = false;
-                        result.error = err;
-                    }
-
-                    return result;
-                }, season)
-                .then(function(result) {
-                    if (result.successful) {
-                        imdbInfo.episodes[season] = result.episodes;
-                        return;
-                    } else {
-                        throw result.error;
+                        ep.title = $(this).find('[itemprop="name"]').text().trim();
+                        ep.aired = moment(aired, 'D MMM. YYYY').isValid() && moment(aired, 'D MMM. YYYY').toDate();
+                        ep.description = $(this).find('.item_description').text().trim();
                     }
                 });
-        })
-        .then(function() {
-            delete imdbInfo.seasons;
-            return imdbInfo;
-        });
+            } catch (err) {
+                result.successful = false;
+                result.error = err;
+            }
+
+            return result;
+        }, season);
+
+        if (result.successful) {
+            imdbInfo.episodes[season] = result.episodes;
+        } else {
+            throw result.error;
+        }
+    }
+
+    delete imdbInfo.seasons;
+    return imdbInfo;
 }
 
 module.exports = IMDb;

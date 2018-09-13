@@ -95,17 +95,43 @@ function memoryUsage() {
 
 
 
+(async () => {
+  const releases = await app.locals.providers.rarbg.fetchReleases();
+  console.log('done');
+  console.log(Object.keys(app.locals.providers.rarbg.newReleases).length);
+  console.log(app.locals.providers.rarbg.newReleases);
+})();
+
 // (async () => {
-//   const releases = await app.locals.providers.rarbg.fetchReleases();
-//   console.log('done');
-//   console.log(Object.keys(releases).length);
+  // const imdbInfo = await app.locals.providers.imdb.fetch('tt0418279', 'movie');
+  // console.log(imdbInfo);
 // })();
 
-(async () => {
-  const imdbInfo = await app.locals.providers.imdb.fetch('tt5071412', 'show');
-  console.log('done');
-  console.log(imdbInfo);
-})();
+// (async () => {
+//   const imdbInfo = await app.locals.providers.imdb.fetch('tt6468322', 'show');
+//   console.log(imdbInfo);
+// })();
+
+
+// const oleoo = require('oleoo')
+
+// let release = oleoo.parse('The.Big.Bang.Theory.S11E06.720p.HDTV.X264-DIMENSION', {
+//   strict: true, // if no main tags found, will throw an exception
+//   defaults: {} // defaults values for : language, resolution and year
+// })
+
+// console.log(console.log(release));
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -119,19 +145,6 @@ function memoryUsage() {
 //         console.log(subtitle);
 //     });
 
-// var Release = require('scene-release-parser');
-
-// // options
-// const options = {
-//     strict: true, // if no main tags found, will throw an exception
-//     defaults: {} // defaults values for : language, resolution and year
-// }
-
-
-// var release = 'The.Big.Bang.Theory.S11E06.720p.HDTV.X264-DIMENSION';
-
-// var parsed = new Release(release, options);
-// console.log(parsed);
 
 // return app.locals.providers.addic7ed.fetchSubtitle(parsed, 11, 6, 126)
 //     .then(function(subtitle) {
@@ -141,8 +154,6 @@ function memoryUsage() {
 //     .then(function(subtitle) {
 //         console.log(subtitle);
 //     });
-
-
 
 // options
 // const options = {
