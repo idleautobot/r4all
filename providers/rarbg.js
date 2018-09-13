@@ -18,8 +18,11 @@ const RARBG = {
         let browser = null;
 
         try {
+            log.info('1');
             browser = await puppeteer.launch();
+            log.info('2');
             const page = await browser.newPage();
+            log.info('3');
             await _.bind(loadPage, this)(page, lastRelease, lastPage);
 
             if (!status) {
@@ -30,6 +33,7 @@ const RARBG = {
             await browser.close();
             return true;
         } catch (err) {
+            console.log(err);
             if (status) {
                 status = false;
                 log.warn('[RARBG]', err);
