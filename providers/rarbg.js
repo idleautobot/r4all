@@ -19,7 +19,7 @@ const RARBG = {
 
         try {
             log.info('1');
-            browser = await puppeteer.launch();
+            browser = await puppeteer.launch({ args: ['--no-sandbox'] });
             log.info('2');
             const page = await browser.newPage();
             log.info('3');
