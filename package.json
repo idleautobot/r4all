@@ -23,6 +23,7 @@
     "mongodb": "^3.1.6",
     "morgan": "^1.9.1",
     "moviedb": "^0.2.10",
+    "oleoo": "github:idleautobot/oleoo#97cd0d4782e24b7468b9ca0a26789f55f91d22c3",
     "puppeteer": "^1.8.0",
     "request": "^2.88.0",
     "serve-favicon": "^2.5.0",
