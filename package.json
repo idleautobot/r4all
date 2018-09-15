@@ -23,7 +23,7 @@
     "mongodb": "^3.1.6",
     "morgan": "^1.9.1",
     "moviedb": "^0.2.10",
-    "oleoo": "git+https://github.com/idleautobot/oleoo.git",
+    "oleoo": "git+https://git@github.com/idleautobot/oleoo.git",
     "puppeteer": "^1.8.0",
     "request": "^2.88.0",
     "serve-favicon": "^2.5.0",
