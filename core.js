@@ -35,9 +35,10 @@ const Core = {
 
             await upsertReleases(newReleases);
 
-            await verifyReleases();
+            //###
+            //await verifyReleases();
 
-            await refreshIMDbOutdated();
+            //await refreshIMDbOutdated();
 
             imdbList.clear();
 

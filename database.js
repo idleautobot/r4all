@@ -32,7 +32,7 @@ module.exports = {
     },
 
     getReleasesToVerify: function() {
-        return db.collection('releases').aggregateAsync([{
+        return db.collection('releases').aggregate([{
             $match: { isVerified: null }
         }, {
             $sort: { pubdate: 1 }
@@ -48,7 +48,7 @@ module.exports = {
                 path: '$imdb',
                 preserveNullAndEmptyArrays: true
             }
-        }]);
+        }]).toArrayAsync();
     },
 
     getLastEpisode: function(imdbId, quality) {
@@ -292,7 +292,7 @@ module.exports = {
     // memory
     // **************************************************
     insertMemoryUsage: function(data) {
-        return db.collection('memory').insertAsync(data);
+        return db.collection('memory').insertOneAsync(data);
     },
 
     getMemoryUsage: function() {
