@@ -35,10 +35,9 @@ const Core = {
 
             await upsertReleases(newReleases);
 
-            //###
-            //await verifyReleases();
+            await verifyReleases();
 
-            //await refreshIMDbOutdated();
+            await refreshIMDbOutdated();
 
             imdbList.clear();
 
@@ -160,6 +159,8 @@ async function fetchReleases() {
         db.getLastRelease(),
         db.getBootstrap()
     ]);
+
+    bootstrap = bootstrap || {};
 
     if (bootstrap.done) {
         bootstrap.lastPage = null;

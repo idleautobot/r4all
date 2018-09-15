@@ -11,28 +11,24 @@ module.exports = {
     // **************************************************
     // initialize
     // **************************************************
-    initialize: function() {
-        return MongoDB.MongoClient.connectAsync('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
-            .then(function(client) {
-                db = client.db(settings.MONGODB_DATABASE);
-                return;
-            });
+    initialize: async function() {
+        const client = await MongoDB.MongoClient.connectAsync('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
+        db = client.db(settings.MONGODB_DATABASE);
     },
 
     // **************************************************
     // get
     // **************************************************
     getBootstrap: async function() {
-        const bootstrap = await db.collection('bootstrap').findOneAsync({ _id: 1 });
-        return bootstrap || {};
+        return await db.collection('bootstrap').findOneAsync({ _id: 1 });
     },
 
-    getLastRelease: function() {
-        return db.collection('releases').find({}, { _id: 0, name: 1, pubdate: 1 }).sort({ pubdate: -1 }).limit(1).nextAsync();
+    getLastRelease: async function() {
+        return await db.collection('releases').find({}, { _id: 0, name: 1, pubdate: 1 }).sort({ pubdate: -1 }).limit(1).nextAsync();
     },
 
-    getReleasesToVerify: function() {
-        return db.collection('releases').aggregate([{
+    getReleasesToVerify: async function() {
+        return await db.collection('releases').aggregate([{
             $match: { isVerified: null }
         }, {
             $sort: { pubdate: 1 }
@@ -51,8 +47,8 @@ module.exports = {
         }]).toArrayAsync();
     },
 
-    getLastEpisode: function(imdbId, quality) {
-        return db.collection('releases').aggregateAsync([{
+    getLastEpisode: async function(imdbId, quality) {
+        return await db.collection('releases').aggregateAsync([{
             $match: { imdbId: imdbId, quality: quality }
         }, {
             $unwind: {
@@ -65,8 +61,8 @@ module.exports = {
         }]);
     },
 
-    getReleaseSubtitle: function(releaseId) {
-        return db.collection('releases').aggregateAsync([{
+    getReleaseSubtitle: async function(releaseId) {
+        return await db.collection('releases').aggregateAsync([{
                 $match: { _id: releaseId }
             }, {
                 $lookup: {
