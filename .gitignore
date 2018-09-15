@@ -1,3 +1,4 @@
 debug
 node_modules
 providers/_del
+package-lock.json
