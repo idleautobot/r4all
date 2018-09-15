@@ -20,7 +20,7 @@ app.locals.startupTime = require('moment-timezone')().tz('Europe/Lisbon');
 app.locals.settings = require('./settings.js');
 app.locals.common = require('./common.js');
 app.locals.db = require('./database.js');
-//app.locals.core = require('./core.js');
+app.locals.core = require('./core.js');
 app.locals.providers = {
     rarbg: require('./providers/rarbg.js'),
     imdb: require('./providers/imdb.js'),
@@ -72,39 +72,29 @@ function memoryUsage() {
         .then(setTimeout(memoryUsage, 15 * 60 * 1000));
 };
 
-// (function initApp(isProduction) {
-//     app.locals.db.initialize()
-//         .then(function() {
-//             return isProduction && memoryUsage();
-//         })
-//         .then(function() {
-//             http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
-//                 debug('express server listening on port ' + app.get('port'));
-// // return app.locals.db.getReleasesToVerify()
-// //         .each(function(release) {
-// //             return app.locals.providers.imdb.fetchInfo(release.imdbId, release.type)
-// //         });
-//                 return (isProduction && app.locals.core.refresh());
-//             });
-//         })
-//         .catch(function(err) {
-//             console.log(err);
-//         });
-// })(process.env.NODE_ENV === 'production');
+(function initApp(isProduction) {
+    app.locals.db.initialize()
+        .then(function() {
+            return isProduction && memoryUsage();
+        })
+        .then(function() {
+            http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
+                debug('express server listening on port ' + app.get('port'));
+                return (isProduction && app.locals.core.refresh());
+            });
+        })
+        .catch(function(err) {
+            console.log(err);
+        });
+})(process.env.NODE_ENV === 'production');
 
 
 
 
-(async () => {
-  const releases = await app.locals.providers.rarbg.fetchReleases();
-  console.log('done');
-  console.log(Object.keys(app.locals.providers.rarbg.newReleases).length);
-  console.log(app.locals.providers.rarbg.newReleases);
-})();
 
 // (async () => {
-  // const imdbInfo = await app.locals.providers.imdb.fetch('tt0418279', 'movie');
-  // console.log(imdbInfo);
+// const imdbInfo = await app.locals.providers.imdb.fetch('tt0418279', 'movie');
+// console.log(imdbInfo);
 // })();
 
 // (async () => {

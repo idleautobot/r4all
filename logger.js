@@ -39,7 +39,7 @@ const logger = createLogger({
             ),
         }),
         new DailyRotateFile({
-            dirname: './app',
+            dirname: './debug',
             filename: '%DATE%_debug.log',
             datePattern: 'YYYY-MM',
             level: 'fatal',

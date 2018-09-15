@@ -4,7 +4,7 @@ const debug = require('debug')('Core');
 const Promise = require('bluebird');
 const _ = require('lodash');
 const moment = require('moment');
-const Release = require('scene-release-parser');
+const oleoo = require('oleoo');
 
 const log = require('./logger.js');
 const settings = require('./settings.js');
@@ -13,90 +13,229 @@ const db = require('./database.js');
 const providers = {
     rarbg: require('./providers/rarbg.js'),
     imdb: require('./providers/imdb.js'),
-    addic7ed: require('./providers/addic7ed.js'),
-    legendasdivx: require('./providers/legendasdivx.js')
+    //###
+    //addic7ed: require('./providers/addic7ed.js'),
+    //legendasdivx: require('./providers/legendasdivx.js')
 };
 
-var Core = function() {
-    // status
-    this.isOn = false;
-    this.isBusy = false;
-    this.refreshes = 0;
-    this.lastRefresh = null;
+let status = true;
+let isBusy = false;
+let refreshes = 0;
+let lastRefresh = null;
 
-    var timer;
+const Core = {
+    refresh: async function() {
+        status = true;
+        isBusy = true;
 
-    // data
-    var imdbList = {};
+        debug('refreshing...');
 
-    this.setTimer = function() {
-        timer = setTimeout(_.bind(this.refresh, this), settings.coreRefreshInterval);
-    };
+        try {
+            const newReleases = await fetchReleases();
 
-    this.clearTimer = function() {
-        clearTimeout(timer);
-    };
+            await upsertReleases(newReleases);
 
-    this.clearIMDbInfo = function() {
-        imdbList = {};
-    };
+            await verifyReleases();
 
-    this.addIMDbInfo = function(imdbInfo) {
-        imdbList[imdbInfo._id] = imdbInfo;
-    };
+            await refreshIMDbOutdated();
 
-    this.getIMDbInfo = function(_id) {
-        return imdbList[_id];
-    };
+            imdbList.clear();
+
+            refreshes++;
+            lastRefresh = moment();
+
+            timer.set();
+            isBusy = false;
+
+            debug('refresh done!');
+
+            return;
+        } catch (err) {
+            log.fatal('[core] ' + err.stack);
+
+            timer.clear();
+            isBusy = false;
+            status = false;
+
+            return;
+        };
+    },
+    // ###
+    fetchSubtitle: async function(releaseId, forceFetch) {
+        // **************************************************
+        // fetchSubtitle
+        //   forceFetch:
+        //     - on movies it will get a subtitle event if it's not a ripped one.
+        //     - on shows it will just fetch the subtitle again (the most updated)
+        // **************************************************
+        // var type;
+        // var subtitleExists;
+
+        // return db.getReleaseSubtitle(releaseId)
+        //     .then(function(release) {
+        //         if (!release) return;
+
+        //         type = release.imdb.type;
+        //         subtitleExists = !!release.subtitle;
+
+        //         if (type == 'movie') {
+        //             return release.subtitle || providers.legendasdivx.fetchSubtitle(release.name, release.imdbId, forceFetch);
+        //         } else {
+        //             if (!release.imdb.addic7edId) {
+        //                 providers.addic7ed.fetchShow(release.imdb.title, release.imdb.year)
+        //                     .then(function(addic7edId) {
+        //                         if (!addic7edId) return;
+
+        //                         var imdbInfo = {
+        //                             _id: release.imdb._id,
+        //                             addic7edId: addic7edId,
+        //                             isVerified: false
+        //                         };
+
+        //                         return db.upsertIMDb(imdbInfo);
+        //                     });
+
+        //                 return;
+        //             } else {
+        //                 return (!forceFetch && release.subtitle) || providers.addic7ed.fetch(release.name, release.imdb.addic7edId);
+        //             }
+        //         }
+        //     })
+        //     .then(function(subtitle) {
+        //         if (!subtitle) return;
+
+        //         var r = {
+        //             _id: releaseId,
+        //             subtitle: subtitle
+        //         };
+
+        //         return Promise.resolve(((type == 'show' && (!subtitleExists || forceFetch)) || (type == 'movie' && !subtitleExists && !forceFetch)) && db.upsertRelease(r))
+        //             .then(function() {
+        //                 return subtitle;
+        //             });
+        //     });
+    },
+    stop: function() {
+        timer.clear();
+        status = false;
+    },
+    isOn: function() {
+        return status;
+    }
 };
-Core.prototype.constructor = Core;
+
+const timer = {
+    timerId: null,
+    set: function() {
+        this.timerId = setTimeout(Core.refresh, settings.coreRefreshInterval);
+    },
+    clear: function() {
+        clearTimeout(this.timerId);
+    }
+};
+
+const imdbList = {
+    data: {},
+    add: function(imdbInfo) {
+        this.data[imdbInfo._id] = imdbInfo;
+    },
+    get: function(_id) {
+        return this.data[_id];
+    },
+    clear: function() {
+        this.data = {};
+    }
+};
 
 // **************************************************
-// fetch & upsert releases
+// fetch releases
 // **************************************************
-var fetchReleases = function() {
-    var rarbg = providers.rarbg;
+async function fetchReleases() {
+    debug('fetching new releases...');
 
-    var _this = this;
+    const rarbg = providers.rarbg;
 
-    return Promise.join(db.getLastPage(), db.getLastRelease(), function(lastPage, lastRelease) {
-            if (settings.bootstrapDatabase) {
-                rarbg.lastPage = lastPage && lastPage.page;
-            } else {
-                rarbg.lastRelease = lastRelease;
-            }
+    let [lastRelease, bootstrap] = await Promise.all([
+        db.getLastRelease(),
+        db.getBootstrap()
+    ]);
 
-            return rarbg.fetchReleases();
-        })
-        .then(function(success) {
-            if ((!success && !settings.bootstrapDatabase) || _.isEmpty(rarbg.newReleases)) {
-                return [];
-            }
+    if (bootstrap.done) {
+        bootstrap.lastPage = null;
+    } else {
+        lastRelease = null;
+        bootstrap.lastPage = bootstrap.lastPage || 1;
+    }
 
-            // database bootstrap is done!
-            if (settings.bootstrapDatabase && success) {
-                settings.bootstrapDatabase = false;
-            }
+    const success = await rarbg.fetchReleases(lastRelease, bootstrap.lastPage);
 
-            return _.sortBy(rarbg.newReleases, 'pubdate');
+    if (_.isEmpty(rarbg.newReleases) || (!success && bootstrap.done)) {
+        return [];
+    }
+
+    const newReleases = _.sortBy(rarbg.newReleases, 'pubdate');
+
+    if (!bootstrap.done) {
+        await db.upsertBootstrap({
+            done: success,
+            lastPage: _.max([bootstrap.lastPage, _.maxBy(newReleases, 'page').page])
         });
-};
+    }
+
+    return newReleases;
+}
+
+// **************************************************
+// upsert releases
+// **************************************************
+async function upsertReleases(releases) {
+    debug('upserting new releases...');
+
+    for (const release of releases) {
+        var parsed = null;
+
+        try {
+            parsed = oleoo.parse(release.name, { strict: true });
+            parsed = ((release.type == 'movie' && parsed.type == 'movie') || (release.type == 'show' && parsed.type == 'tvshow')) && parsed;
+        } catch (err) {}
+
+        if (release.type == 'show' && parsed) {
+            release.season = parsed.season;
+            release.episodes = parsed.episodes;
+        }
+
+        if (!release.imdbId || !parsed) {
+            release.isVerified = false;
+        }
+
+        await db.upsertRelease(release);
+    }
+}
 
 // **************************************************
 // verify releases
 // **************************************************
-var verifyRelease = function(release) {
-    if (release.type == 'movie') {
-        return _.bind(verifyMovie, this)(release);
-    } else {
-        return _.bind(verifyShow, this)(release);
+async function verifyReleases() {
+    debug('verifying releases...');
+
+    const releases = await db.getReleasesToVerify();
+
+    for (const release of releases) {
+        await verifyRelease(release);
     }
-};
+}
 
-var verifyMovie = function(release) {
-    var _this = this;
+async function verifyRelease(release) {
+    if (release.type == 'movie') {
+        await verifyMovie(release);
+    } else {
+        await verifyShow(release);
+    }
+}
 
-    return Promise.resolve(this.getIMDbInfo(release.imdbId) || providers.imdb.fetchInfo(release.imdbId, release.type))
+//###
+function verifyMovie(release) {
+    return Promise.resolve(imdbList.get(release.imdbId) || providers.imdb.fetchInfo(release.imdbId, release.type))
         .then(function(imdbInfo) {
             if (!imdbInfo) {
                 return;
@@ -141,16 +280,14 @@ var verifyMovie = function(release) {
 
             return db.upsertIMDb(imdbInfo)
                 .then(function() {
-                    _this.addIMDbInfo(imdbInfo);
+                    imdbList.add(imdbInfo);
                     return db.upsertRelease(r);
                 });
         });
-};
-
-var verifyShow = function(release) {
-    var _this = this;
-
-    return Promise.resolve(this.getIMDbInfo(release.imdbId) || providers.imdb.fetchInfo(release.imdbId, release.type))
+}
+//###
+function verifyShow(release) {
+    return Promise.resolve(imdbList.get(release.imdbId) || providers.imdb.fetchInfo(release.imdbId, release.type))
         .then(function(imdbInfo) {
             if (!imdbInfo) {
                 return;
@@ -183,154 +320,24 @@ var verifyShow = function(release) {
                     return db.upsertIMDb(imdbInfo);
                 })
                 .then(function() {
-                    _this.addIMDbInfo(imdbInfo);
+                    imdbList.add(imdbInfo);
                     return db.upsertRelease(r);
                 });
         });
-};
+}
 
 // **************************************************
 // database maintenance
 // **************************************************
-var refreshIMDbOutdated = function() {
-    return db.getIMDbOutdated()
-        .then(function(doc) {
-            return doc && providers.imdb.fetchInfo(doc._id, doc.type)
-        })
-        .then(function(imdbInfo) {
-            return imdbInfo && db.upsertIMDb(imdbInfo);
-        });
-};
+async function refreshIMDbOutdated() {
+    debug('refreshing IMDb data...');
 
-// **************************************************
-// fetchSubtitle
-//   forceFetch:
-//     - on movies it will get a subtitle event if it's not a ripped one.
-//     - on shows it will just fetch the subtitle again (the most updated)
-// **************************************************
-Core.prototype.fetchSubtitle = function(releaseId, forceFetch) {
-    var type;
-    var subtitleExists;
+    const doc = await db.getIMDbOutdated();
 
-    return db.getReleaseSubtitle(releaseId)
-        .then(function(release) {
-            if (!release) return;
-
-            type = release.imdb.type;
-            subtitleExists = !!release.subtitle;
-
-            if (type == 'movie') {
-                return release.subtitle || providers.legendasdivx.fetchSubtitle(release.name, release.imdbId, forceFetch);
-            } else {
-                if (!release.imdb.addic7edId) {
-                    providers.addic7ed.fetchShow(release.imdb.title, release.imdb.year)
-                        .then(function(addic7edId) {
-                            if (!addic7edId) return;
-
-                            var imdbInfo = {
-                                _id: release.imdb._id,
-                                addic7edId: addic7edId,
-                                isVerified: false
-                            };
-
-                            return db.upsertIMDb(imdbInfo);
-                        });
-
-                    return;
-                } else {
-                    return (!forceFetch && release.subtitle) || providers.addic7ed.fetch(release.name, release.imdb.addic7edId);
-                }
-            }
-        })
-        .then(function(subtitle) {
-            if (!subtitle) return;
-
-            var r = {
-                _id: releaseId,
-                subtitle: subtitle
-            };
-
-            return Promise.resolve(((type == 'show' && (!subtitleExists || forceFetch)) || (type == 'movie' && !subtitleExists && !forceFetch)) && db.upsertRelease(r))
-                .then(function() {
-                    return subtitle;
-                });
-        });
-};
-
-// **************************************************
-// controller
-// **************************************************
-Core.prototype.stop = function() {
-    this.clearTimer();
-    this.isOn = false;
-};
-
-Core.prototype.refresh = function() {
-    this.isBusy = true;
-
-    if (!this.isOn) {
-        this.isOn = true;
+    if (doc) {
+        const imdbInfo = await providers.imdb.fetch(doc._id, doc.type);
+        imdbInfo && await db.upsertIMDb(imdbInfo);
     }
+}
 
-    debug('refreshing...');
-    debug('fetching new releases...');
-
-    var _this = this;
-
-    return _.bind(fetchReleases, this)()
-        .each(function(release) {
-            var parsed = null;
-
-            try {
-                parsed = new Release(release.name);
-                parsed = ((release.type == 'movie' && parsed.type == 'movie') || (release.type == 'show' && parsed.type == 'tvshow')) && parsed;
-            } catch (err) {}
-
-            if (release.type == 'show' && parsed) {
-                release.season = parsed.season;
-                release.episodes = parsed.episodes;
-            }
-
-            if (!release.imdbId || !parsed) {
-                release.isVerified = false;
-            }
-
-            return db.upsertRelease(release);
-        })
-        .then(function() {
-            debug('verifying releases...');
-
-            return db.getReleasesToVerify();
-        })
-        .each(function(release) {
-            return _.bind(verifyRelease, _this)(release);
-        })
-        .then(function() {
-            debug('refreshing IMDb data...');
-
-            return refreshIMDbOutdated();
-        })
-        .then(function() {
-            _this.clearIMDbInfo();
-
-            _this.refreshes++;
-            _this.lastRefresh = moment();
-
-            _this.setTimer();
-            _this.isBusy = false;
-
-            debug('refresh done!');
-
-            return;
-        })
-        .catch(function(err) {
-            log.error('[core] ', err);
-
-            _this.stop();
-            _this.isBusy = false;
-
-            return null;
-        });
-};
-
-module.exports = new Core;
+module.exports = Core;

@@ -12,9 +12,9 @@ module.exports = {
     // initialize
     // **************************************************
     initialize: function() {
-        return MongoDB.MongoClient.connectAsync('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE)
-            .then(function(database) {
-                db = database;
+        return MongoDB.MongoClient.connectAsync('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
+            .then(function(client) {
+                db = client.db(settings.MONGODB_DATABASE);
                 return;
             });
     },
@@ -22,8 +22,9 @@ module.exports = {
     // **************************************************
     // get
     // **************************************************
-    getLastPage: function() {
-        return db.collection('releases').find({}, { _id: 0, page: 1 }).sort({ page: -1 }).limit(1).nextAsync();
+    getBootstrap: async function() {
+        const bootstrap = await db.collection('bootstrap').findOneAsync({ _id: 1 });
+        return bootstrap || {};
     },
 
     getLastRelease: function() {
@@ -259,7 +260,13 @@ module.exports = {
     // **************************************************
     // upsert
     // **************************************************
+    upsertBootstrap: function(bootstrap) {
+        bootstrap._id = 1;
+        return db.collection('bootstrap').updateOneAsync({ _id: bootstrap._id }, { $set: bootstrap }, { upsert: true });
+    },
+
     upsertRelease: function(release) {
+        delete release.page;
         return db.collection('releases').updateOneAsync({ _id: release._id }, { $set: release }, { upsert: true });
     },
 

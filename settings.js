@@ -8,15 +8,12 @@ module.exports = {
     MONGODB_SERVICE_HOST: (process.env.MONGODB_SERVICE_HOST || '127.0.0.1'),
     MONGODB_SERVICE_PORT: (process.env.MONGODB_SERVICE_PORT || '27017'),
     MONGODB_DATABASE: (process.env.MONGODB_DATABASE || 'r4all'),
-    MONGODB_USER: (process.env.MONGODB_USER || 'userVAM'),
-    MONGODB_PASSWORD: (process.env.MONGODB_PASSWORD || 'yplP7nKPIWVK3r3W'),
+    MONGODB_USER: (process.env.MONGODB_USER || 'admin'),
+    MONGODB_PASSWORD: (process.env.MONGODB_PASSWORD || 'dtDsBJHl0IFsLPht'),
 
     // ####################
     // core functionality
     // ####################
-
-    // flag to bootstrap the database
-    bootstrapDatabase: (process.env.APP_BOOTSTRAP_DATABASE && !!parseInt(process.env.APP_BOOTSTRAP_DATABASE)) || true,
 
     // http request timeout
     requestTimeout: (parseInt(process.env.APP_REQUEST_TIMEOUT_SECONDS) || 60) * 1000,

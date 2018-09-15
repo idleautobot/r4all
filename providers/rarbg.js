@@ -18,11 +18,10 @@ const RARBG = {
         let browser = null;
 
         try {
-            log.info('1');
-            browser = await puppeteer.launch({ args: ['--no-sandbox'] });
-            log.info('2');
+            browser = await puppeteer.launch({
+                args: ['--no-sandbox', '--lang=en']
+            });
             const page = await browser.newPage();
-            log.info('3');
             await _.bind(loadPage, this)(page, lastRelease, lastPage);
 
             if (!status) {
@@ -33,10 +32,9 @@ const RARBG = {
             await browser.close();
             return true;
         } catch (err) {
-            console.log(err);
             if (status) {
                 status = false;
-                log.warn('[RARBG]', err);
+                log.warn('[RARBG] ' + err.stack);
             }
 
             if (browser) await browser.close();
@@ -49,7 +47,7 @@ const RARBG = {
     isOn: function() {
         return status;
     }
-}
+};
 
 async function loadPage(page, lastRelease, pageNumber) {
     pageNumber = pageNumber || 1;
@@ -103,7 +101,7 @@ async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
         case 'torrents':
             const done = await _.bind(getReleasesFromPage, this)(page, lastRelease);
 
-            if (1 || done) {
+            if (done) {
                 return;
             } else {
                 await sleep(((Math.random() * 30) + 30) * 1000);
@@ -123,11 +121,11 @@ async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
             return await _.bind(loadPage, this)(page, lastRelease, pageNumber);
         case 'banned':
             debug('banned...');
-            throw ('banned');
+            throw new Error('banned');
         default:
             debug('unknown page loaded');
             await unknownPage(page);
-            throw ('unknown page loaded');
+            throw new Error('unknown page loaded');
     }
 }
 
@@ -160,16 +158,16 @@ async function getReleasesFromPage(page, lastRelease) {
         try {
             // loop through every row
             $('.lista2t .lista2').each(function() {
-                const column1 = $(this).find('.lista').eq(0);
-                const column2 = $(this).find('.lista').eq(1);
-                const column3 = $(this).find('.lista').eq(2);
+                const col1 = $(this).find('.lista').eq(0);
+                const col2 = $(this).find('.lista').eq(1);
+                const col3 = $(this).find('.lista').eq(2);
 
                 const release = {
                     _id: null,
-                    name: $(column2).find('a[href^="/torrent/"]').text().trim().replace(/\[.+\]$/, ''),
-                    category: parseInt(regex($(column1).find('a[href^="/torrents.php?category="]').attr('href'), /\/torrents\.php\?category=(\d+)/i)),
-                    pubdate: $(column3).text().trim(),
-                    imdbId: regex($(column2).find('a[href^="/torrents.php?imdb="]').attr('href'), /\/torrents\.php\?imdb=(tt\d+)/i),
+                    name: $(col2).find('a[href^="/torrent/"]').text().trim().replace(/\[.+\]$/, ''),
+                    category: parseInt(regex($(col1).find('a[href^="/torrents.php?category="]').attr('href'), /\/torrents\.php\?category=(\d+)/i)),
+                    pubdate: $(col3).text().trim(),
+                    imdbId: regex($(col2).find('a[href^="/torrents.php?imdb="]').attr('href'), /\/torrents\.php\?imdb=(tt\d+)/i),
                     type: null,
                     quality: null,
                     page: page
@@ -191,11 +189,11 @@ async function getReleasesFromPage(page, lastRelease) {
                     release._id = release.name.replace(/[^\w_]/g, '').toUpperCase();
                     release.pubdate = pubdate.format();
                     release.type = (release.category == 41 ? 'show' : 'movie');
-                    release.quality = (release.name.indexOf('1080p') != -1 ? '1080p' : '720p');
+                    release.quality = (release.name.indexOf('1080p') !== -1 ? '1080p' : '720p');
 
                     result.releases.push(release);
                 } else {
-                    throw 'site scraping: ' + release.name + '|' + release.category + '|' + release.pubdate;
+                    throw new Error('site scraping: ' + release.name + '|' + release.category + '|' + release.pubdate);
                 }
             });
 
@@ -225,7 +223,7 @@ async function getReleasesFromPage(page, lastRelease) {
 
         return result.done;
     } else {
-        throw result.error;
+        throw new Error(result.error);
     }
 }
 

@@ -23,7 +23,7 @@ const IMDb = {
 
         try {
             browser = await puppeteer.launch({
-                args: ['--lang=en']
+                args: ['--no-sandbox', '--lang=en']
             });
             const page = await browser.newPage();
 
