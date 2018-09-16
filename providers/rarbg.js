@@ -52,7 +52,7 @@ const RARBG = {
             proxy = proxies.shift();
 
             if (err.name === 'TimeoutError' || err.message.startsWith('net::ERR_CONNECTION_TIMED_OUT') || err.name === 'BanError') {
-                return this.fetchReleases(lastRelease, pageNumber);
+                return await this.fetchReleases(lastRelease, pageNumber);
             } else {
                 return false;
             }
