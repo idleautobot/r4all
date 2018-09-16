@@ -7,8 +7,12 @@ const puppeteer = require('puppeteer');
 
 const log = require('../logger.js');
 
+const URL = URI('https://rarbg.to');
+const PROXY_LIST_URL = URI('http://www.freeproxylists.com/https.html');
+
 let status = true;
-const URL = URI('https://rarbg.is');
+let proxies = [];
+let proxy = null;
 
 const RARBG = {
     fetchReleases: async function(lastRelease, lastPage) {
@@ -18,8 +22,12 @@ const RARBG = {
         let browser = null;
 
         try {
+            if (_.isEmpty(proxies)) await getProxies();
+
+            proxy = proxy || proxies.shift();
+
             browser = await puppeteer.launch({
-                args: ['--no-sandbox', '--lang=en']
+                args: ['--lang=en', '--no-sandbox', '--proxy-server=' + proxy],
             });
             const page = await browser.newPage();
             await _.bind(loadPage, this)(page, lastRelease, lastPage);
@@ -38,6 +46,9 @@ const RARBG = {
             }
 
             if (browser) await browser.close();
+
+            proxy = proxies.shift();
+
             return false;
         }
     },
@@ -49,6 +60,61 @@ const RARBG = {
     }
 };
 
+async function getProxies() {
+    debug('fetching proxy list...');
+
+    const browser = await puppeteer.launch({
+        args: ['--lang=en', '--no-sandbox']
+    });
+    const page = await browser.newPage();
+
+    await page.goto(PROXY_LIST_URL.toString());
+
+    const navigationPromise = page.waitForResponse(response => response.url().startsWith('http://www.freeproxylists.com/load_https_'));
+
+    await page.click('a[href^="https/"]');
+
+    await navigationPromise;
+
+    await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
+
+    const result = await page.evaluate(() => {
+        const result = {
+            successful: true,
+            proxies: []
+        };
+
+        try {
+            // loop through every row
+            $('#dataID table tbody tr').each(function() {
+                if ($(this).find('td').length == 2) {
+                    const proxy = $(this).find('td').eq(0).text() + ':' + $(this).find('td').eq(1).text();
+                    result.proxies.push(proxy);
+                }
+            });
+        } catch (err) {
+            result.successful = false;
+            result.error = err;
+        }
+
+        return result;
+    });
+
+    await browser.close();
+
+    if (result.successful) {
+        if (result.debug) {
+            debug(result.debug);
+        }
+
+        proxies = result.proxies;
+
+        return;
+    } else {
+        throw new Error(result.error);
+    }
+}
+
 async function loadPage(page, lastRelease, pageNumber) {
     pageNumber = pageNumber || 1;
 
@@ -58,8 +124,9 @@ async function loadPage(page, lastRelease, pageNumber) {
         .addQuery({ category: '41;44;45', page: pageNumber })
         .toString();
 
-    debug(url);
+    debug(url + ' @' + proxy);
 
+    await page.setDefaultNavigationTimeout(5 * 1000);
     await page.goto(url);
     await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber);
 }
@@ -104,7 +171,7 @@ async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
             if (done) {
                 return;
             } else {
-                await sleep(((Math.random() * 30) + 30) * 1000);
+                await sleep(((Math.random() * 5) + 10) * 1000);
                 return await _.bind(loadPage, this)(page, lastRelease, ++pageNumber);
             }
         case 'verifying':

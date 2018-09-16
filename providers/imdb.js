@@ -11,11 +11,12 @@ const mdb = require('./themoviedb.js');
 
 const log = require('../logger.js');
 
-let status = true;
 const URL = URI('https://www.imdb.com');
 const TITLE_URL = URITemplate(URL.toString() + 'title/{imdbId}/');
 const SEASON_URL = URITemplate(URL.toString() + 'title/{imdbId}/episodes?season={season}');
 const TRAILER_URL = URITemplate(URL.toString() + 'video/imdb/{trailerId}/imdb/embed?autoplay=true&format=720p');
+
+let status = true;
 
 const IMDb = {
     fetch: async function(imdbId, type) {
