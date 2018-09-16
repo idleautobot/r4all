@@ -150,21 +150,21 @@ async function pageLoadedHandler(page, lastRelease, attempt) {
     }
 
     const pageLoaded = await page.evaluate(() => {
-        let pageLoaded;
+        let pageLoaded = 'unknown';
 
-        if ($('.lista2t').length) {
-            pageLoaded = 'torrents';
-        } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
-            pageLoaded = 'verifying';
-        } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
-            pageLoaded = 'retry';
-        } else if ($('#solve_string').length) {
-            pageLoaded = 'captcha';
-        } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
-            pageLoaded = 'banned';
-        } else {
-            pageLoaded = 'unknown';
-        }
+        try {
+            if ($('.lista2t').length) {
+                pageLoaded = 'torrents';
+            } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
+                pageLoaded = 'verifying';
+            } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
+                pageLoaded = 'retry';
+            } else if ($('#solve_string').length) {
+                pageLoaded = 'captcha';
+            } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
+                pageLoaded = 'banned';
+            }
+        } catch (err) {}
 
         return pageLoaded;
     });
