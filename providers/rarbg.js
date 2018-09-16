@@ -11,6 +11,7 @@ const URL = URI('https://rarbg.to');
 const PROXY_LIST_URL = URI('http://www.freeproxylists.com/https.html');
 
 let status = true;
+let pageNumber = 1;
 let proxies = [];
 let proxy = null;
 
@@ -18,6 +19,7 @@ const RARBG = {
     fetchReleases: async function(lastRelease, lastPage) {
         // init
         this.newReleases = {};
+        pageNumber = lastPage || 1;
 
         let browser = null;
 
@@ -30,7 +32,7 @@ const RARBG = {
                 args: ['--lang=en', '--no-sandbox', '--proxy-server=' + proxy]
             });
             const page = await browser.newPage();
-            await _.bind(loadPage, this)(page, lastRelease, lastPage);
+            await _.bind(loadPage, this)(page, lastRelease);
 
             if (!status) {
                 status = true;
@@ -49,8 +51,8 @@ const RARBG = {
 
             proxy = proxies.shift();
 
-            if (err.name === 'TimeoutError' || err.name === 'BanError') {
-                return this.fetchReleases(lastRelease, lastPage);
+            if (err.name === 'TimeoutError' || err.message.startsWith('net::ERR_CONNECTION_TIMED_OUT') || err.name === 'BanError') {
+                return this.fetchReleases(lastRelease, pageNumber);
             } else {
                 return false;
             }
@@ -117,9 +119,7 @@ async function getProxies() {
     }
 }
 
-async function loadPage(page, lastRelease, pageNumber) {
-    pageNumber = pageNumber || 1;
-
+async function loadPage(page, lastRelease) {
     let url = URL
         .clone()
         .segment('torrents.php')
@@ -130,13 +130,13 @@ async function loadPage(page, lastRelease, pageNumber) {
 
     await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
-    await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber);
+    await _.bind(pageLoadedHandler, this)(page, lastRelease);
 }
 
-async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
+async function pageLoadedHandler(page, lastRelease, attempt) {
     attempt = attempt || 0;
 
-    if (attempt > 1) return await _.bind(loadPage, this)(page, lastRelease, pageNumber);
+    if (attempt > 1) return await _.bind(loadPage, this)(page, lastRelease);
 
     const hasjQuery = await page.evaluate(() => {
         return (typeof window.$ === 'function');
@@ -174,20 +174,21 @@ async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
                 return;
             } else {
                 await sleep(((Math.random() * 5) + 10) * 1000);
-                return await _.bind(loadPage, this)(page, lastRelease, ++pageNumber);
+                pageNumber++;
+                return await _.bind(loadPage, this)(page, lastRelease);
             }
         case 'verifying':
             debug('verifying the browser...');
             await sleep(10 * 1000);
-            return await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber, ++attempt);
+            return await _.bind(pageLoadedHandler, this)(page, lastRelease, ++attempt);
         case 'retry':
             debug('retry verifying the browser...');
             await verifyBrowser(page);
-            return await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber);
+            return await _.bind(pageLoadedHandler, this)(page, lastRelease);
         case 'captcha':
             debug('solving captcha...');
             await solveCaptcha(page);
-            return await _.bind(loadPage, this)(page, lastRelease, pageNumber);
+            return await _.bind(loadPage, this)(page, lastRelease);
         case 'banned':
             debug('banned...');
             const e = new Error('banned');
