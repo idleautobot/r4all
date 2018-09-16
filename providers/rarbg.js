@@ -16,9 +16,12 @@ let proxies = [];
 let proxy = null;
 
 const RARBG = {
-    fetchReleases: async function(lastRelease, lastPage) {
+    fetchReleases: async function(lastRelease, lastPage, isNewFetch = true) {
         // init
-        this.newReleases = {};
+        if(isNewFetch) {
+            this.newReleases = {};            
+        }
+
         pageNumber = lastPage || 1;
 
         let browser = null;
@@ -51,8 +54,8 @@ const RARBG = {
 
             proxy = proxies.shift();
 
-            if (err.name === 'TimeoutError' || err.message.startsWith('net::ERR_CONNECTION_TIMED_OUT') || err.name === 'BanError') {
-                return await this.fetchReleases(lastRelease, pageNumber);
+            if (err.message.startsWith('net::ERR_CONNECTION') || err.name === 'TimeoutError' || err.name === 'BanError') {
+                return await this.fetchReleases(lastRelease, pageNumber, false);
             } else {
                 return false;
             }
