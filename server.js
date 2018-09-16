@@ -72,8 +72,6 @@ function memoryUsage() {
         .then(setTimeout(memoryUsage, 15 * 60 * 1000));
 };
 
-process.env.NODE_ENV = 'production';
-
 (function initApp(isProduction) {
     app.locals.db.initialize()
         .then(function() {
