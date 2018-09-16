@@ -53,7 +53,7 @@ const RARBG = {
 
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR_CONNECTION') || err.name === 'TimeoutError' || err.name === 'BanError') {
+            if (err.message.startsWith('net::ERR_CONNECTION') || err.name === 'TimeoutError' || err.name === 'BanError' || err.name === 'PageLoadedError') {
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
                 console.log(err);
@@ -163,6 +163,8 @@ async function pageLoadedHandler(page, lastRelease, attempt) {
                 pageLoaded = 'captcha';
             } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
                 pageLoaded = 'banned';
+            } else {
+                pageLoaded = 'unknown';
             }
         } catch (err) {}
 
@@ -197,10 +199,15 @@ async function pageLoadedHandler(page, lastRelease, attempt) {
             const e = new Error('banned');
             e.name = 'BanError';
             throw e;
-        default:
+        case 'unknown':
             debug('unknown page loaded');
             await unknownPage(page);
             throw new Error('unknown page loaded');
+        default:
+            debug('fail on pageLoaded check');
+            const e = new Error('fail on pageLoaded check');
+            e.name = 'PageLoadedError';
+            throw e;
     }
 }
 
