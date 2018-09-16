@@ -49,7 +49,11 @@ const RARBG = {
 
             proxy = proxies.shift();
 
-            return false;
+            if (err.name === 'TimeoutError' || err.name === 'BanError') {
+                return this.fetchReleases(lastRelease, lastPage);
+            } else {
+                return false;
+            }
         }
     },
     getURL: function() {
@@ -124,7 +128,7 @@ async function loadPage(page, lastRelease, pageNumber) {
 
     debug(url + ' @' + proxy);
 
-    await page.setDefaultNavigationTimeout(5 * 1000);
+    await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
     await _.bind(pageLoadedHandler, this)(page, lastRelease, pageNumber);
 }
@@ -186,7 +190,9 @@ async function pageLoadedHandler(page, lastRelease, pageNumber, attempt) {
             return await _.bind(loadPage, this)(page, lastRelease, pageNumber);
         case 'banned':
             debug('banned...');
-            throw new Error('banned');
+            const e = new Error('banned');
+            e.name = 'BanError';
+            throw e;
         default:
             debug('unknown page loaded');
             await unknownPage(page);
