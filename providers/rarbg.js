@@ -27,7 +27,7 @@ const RARBG = {
             proxy = proxy || proxies.shift();
 
             browser = await puppeteer.launch({
-                args: ['--lang=en', '--no-sandbox', '--proxy-server=' + proxy],
+                args: ['--lang=en', '--no-sandbox', '--proxy-server=' + proxy]
             });
             const page = await browser.newPage();
             await _.bind(loadPage, this)(page, lastRelease, lastPage);
@@ -70,14 +70,10 @@ async function getProxies() {
 
     await page.goto(PROXY_LIST_URL.toString());
 
-    const navigationPromise = page.waitForResponse(response => response.url().startsWith('http://www.freeproxylists.com/load_https_'));
-
     await page.click('a[href^="https/"]');
 
-    await navigationPromise;
+    await page.waitForSelector('#dataID table');
 
-let bodyHTML = await page.evaluate(() => document.body.innerHTML);
-console.log(bodyHTML);
     await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
 
     const result = await page.evaluate(() => {
@@ -101,7 +97,7 @@ console.log(bodyHTML);
 
         return result;
     });
-console.log(result);
+
     await browser.close();
 
     if (result.successful) {
