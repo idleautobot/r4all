@@ -53,7 +53,7 @@ const RARBG = {
 
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR_CONNECTION') || err.message.startsWith('net::ERR_TIMED_OUT') || err.name === 'TimeoutError' || err.name === 'BanError' || err.name === 'PageLoadedError') {
+            if (err.message.startsWith('net::ERR_CONNECTION') || err.name === 'TimeoutError' || err.name === 'BanError') {
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
                 console.log(err);
@@ -150,23 +150,21 @@ async function pageLoadedHandler(page, lastRelease, attempt) {
     }
 
     const pageLoaded = await page.evaluate(() => {
-        let pageLoaded = 'fail';
+        let pageLoaded;
 
-        try {
-            if ($('.lista2t').length) {
-                pageLoaded = 'torrents';
-            } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
-                pageLoaded = 'verifying';
-            } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
-                pageLoaded = 'retry';
-            } else if ($('#solve_string').length) {
-                pageLoaded = 'captcha';
-            } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
-                pageLoaded = 'banned';
-            } else {
-                pageLoaded = 'unknown';
-            }
-        } catch (err) {}
+        if ($('.lista2t').length) {
+            pageLoaded = 'torrents';
+        } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
+            pageLoaded = 'verifying';
+        } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
+            pageLoaded = 'retry';
+        } else if ($('#solve_string').length) {
+            pageLoaded = 'captcha';
+        } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
+            pageLoaded = 'banned';
+        } else {
+            pageLoaded = 'unknown';
+        }
 
         return pageLoaded;
     });
@@ -199,15 +197,10 @@ async function pageLoadedHandler(page, lastRelease, attempt) {
             const e = new Error('banned');
             e.name = 'BanError';
             throw e;
-        case 'unknown':
+        default:
             debug('unknown page loaded');
             await unknownPage(page);
             throw new Error('unknown page loaded');
-        default:
-            debug('fail on pageLoaded check');
-            const e = new Error('fail on pageLoaded check');
-            e.name = 'PageLoadedError';
-            throw e;
     }
 }
 
