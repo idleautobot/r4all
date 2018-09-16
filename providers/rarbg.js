@@ -56,6 +56,7 @@ const RARBG = {
             if (err.message.startsWith('net::ERR_CONNECTION') || err.name === 'TimeoutError' || err.name === 'BanError') {
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
+                console.log(err);
                 return false;
             }
         }
