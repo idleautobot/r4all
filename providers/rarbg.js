@@ -76,6 +76,8 @@ async function getProxies() {
 
     await navigationPromise;
 
+let bodyHTML = await page.evaluate(() => document.body.innerHTML);
+console.log(bodyHTML);
     await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
 
     const result = await page.evaluate(() => {
