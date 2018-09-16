@@ -53,7 +53,7 @@ const RARBG = {
 
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR_CONNECTION') || err.name === 'TimeoutError' || err.name === 'BanError') {
+            if (err.message.startsWith('net::ERR_') || err.name === 'TimeoutError' || err.name === 'BanError') {
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
                 console.log(err);
