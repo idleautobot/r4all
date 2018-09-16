@@ -99,7 +99,7 @@ async function getProxies() {
 
         return result;
     });
-
+console.log(result);
     await browser.close();
 
     if (result.successful) {
