@@ -6,6 +6,7 @@ const URI = require('urijs');
 const puppeteer = require('puppeteer');
 
 const log = require('../logger.js');
+const freeproxylists = require('./freeproxylists.js');
 
 const URL = URI('https://rarbg.to');
 const PROXY_LIST_URL = URI('http://www.freeproxylists.com/https.html');
@@ -26,7 +27,8 @@ const RARBG = {
         let browser = null;
 
         try {
-            if (_.isEmpty(proxies)) await getProxies();
+            if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
+            if (_.isEmpty(proxies)) throw new Error('unable to fetch proxies');
 
             proxy = proxy || proxies.shift();
 
@@ -54,6 +56,7 @@ const RARBG = {
             proxy = proxies.shift();
 
             if (err.message.startsWith('net::ERR_') || err.name === 'TimeoutError' || err.name === 'BanError') {
+                if (err.name !== 'BanError') debug(err.message);
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
                 console.log(err);
@@ -68,59 +71,6 @@ const RARBG = {
         return status;
     }
 };
-
-async function getProxies() {
-    debug('fetching proxy list...');
-
-    const browser = await puppeteer.launch({
-        args: ['--lang=en', '--no-sandbox']
-    });
-    const page = await browser.newPage();
-
-    await page.goto(PROXY_LIST_URL.toString());
-
-    await page.click('a[href^="https/"]');
-
-    await page.waitForSelector('#dataID table');
-
-    await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
-
-    const result = await page.evaluate(() => {
-        const result = {
-            successful: true,
-            proxies: []
-        };
-
-        try {
-            // loop through every row
-            $('#dataID table tbody tr').each(function() {
-                if ($(this).find('td').length == 2) {
-                    const proxy = $(this).find('td').eq(0).text() + ':' + $(this).find('td').eq(1).text();
-                    result.proxies.push(proxy);
-                }
-            });
-        } catch (err) {
-            result.successful = false;
-            result.error = err;
-        }
-
-        return result;
-    });
-
-    await browser.close();
-
-    if (result.successful) {
-        if (result.debug) {
-            debug(result.debug);
-        }
-
-        proxies = result.proxies;
-
-        return;
-    } else {
-        throw new Error(result.error);
-    }
-}
 
 async function loadPage(page, lastRelease) {
     let url = URL
@@ -182,7 +132,7 @@ async function pageLoadedHandler(page, lastRelease, attempt) {
             }
         case 'verifying':
             debug('verifying the browser...');
-            await sleep(10 * 1000);
+            await page.waitForNavigation()
             return await _.bind(pageLoadedHandler, this)(page, lastRelease, ++attempt);
         case 'retry':
             debug('retry verifying the browser...');
@@ -348,7 +298,9 @@ async function solveCaptcha(page) {
 }
 
 async function verifyBrowser(page) {
+    const navigationPromise = page.waitForNavigation();
     await page.click('a[href="/threat_defence.php?defence=1"]');
+    await navigationPromise;
 }
 
 async function unknownPage(page) {

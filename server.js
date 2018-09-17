@@ -1,6 +1,6 @@
 'use strict';
 
-process.env.DEBUG = 'Server, Core, Addic7ed, IMDb, LegendasDivx, RARBG';
+process.env.DEBUG = 'Server, Core, Addic7ed, IMDb, LegendasDivx, RARBG, FreeProxyLists';
 
 var path = require('path');
 var http = require('http');
