@@ -98,15 +98,16 @@ process.env.NODE_ENV = 'production';
 
 
 
+// (async () => {
+// const imdbInfo = await app.locals.providers.imdb.fetch('tt0418279', 'movie');
+// console.log(imdbInfo);
+// })();
 
+// (async () => {
+//   const imdbInfo = await app.locals.providers.imdb.fetch('tt0423776', 'show');
+//   console.log(imdbInfo);
+// })();
 
-
-
-
-// return app.locals.providers.imdb.fetchInfo('tt5071412', 'show')
-//     .then(function(imdbInfo) {
-//         console.log(imdbInfo);
-//     });
 
 // return app.locals.providers.legendasdivx.fetchSubtitle('Overdrive.2017.LIMITED.720p.BluRay.x264-DRONES', 'tt1935194', true)
 //     .then(function(subtitle) {

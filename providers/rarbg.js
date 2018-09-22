@@ -17,8 +17,8 @@ const RARBG_PAGES = {
     verifying: 'verifying',
     retry: 'retry',
     captcha: 'captcha',
-    banned: 'banned',
     cloudflare: 'cloudflare',
+    banned: 'banned',
     unknown: 'unknown'
 };
 
@@ -68,7 +68,7 @@ const RARBG = {
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
                 status = false;
-                log.crit('[RARBG] ' + err.stack);
+                log.crit('[RARBG] ' + (err.stack || err));
                 return false;
             }
         }
@@ -107,7 +107,7 @@ const RARBG = {
                 return await this.fetchMagnet(tid);
             } else {
                 status = false;
-                log.crit('[RARBG] ' + err.stack);
+                log.crit('[RARBG] ' + (err.stack || err));
                 return null;
             }
         }
@@ -177,6 +177,8 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
                 pageLoaded = RARBG_PAGES.torrentList;
             } else if ($('table.lista').length && expectedPage == RARBG_PAGES.torrent) {
                 pageLoaded = RARBG_PAGES.torrent;
+            } else if ($('#cf-wrapper').length) {
+                pageLoaded = RARBG_PAGES.cloudflare;
             } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
                 pageLoaded = RARBG_PAGES.verifying;
             } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
@@ -185,8 +187,6 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
                 pageLoaded = RARBG_PAGES.captcha;
             } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
                 pageLoaded = RARBG_PAGES.banned;
-            } else if ($('#cf-wrapper').length) {
-                pageLoaded = RARBG_PAGES.cloudflare;
             }
         } catch (err) {}
 
@@ -231,14 +231,14 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
             }
 
             return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
-        case RARBG_PAGES.banned:
-            const eBanned = new Error('banned...');
-            eBanned.name = 'BanError';
-            throw eBanned;
         case RARBG_PAGES.cloudflare:
             const eCloudflare = new Error('cloudflare protection...');
             eCloudflare.name = 'CloudflareProtection';
             throw eCloudflare;
+        case RARBG_PAGES.banned:
+            const eBanned = new Error('banned...');
+            eBanned.name = 'BanError';
+            throw eBanned;
         default:
             await unknownPage(page);
             throw new Error('unknown page loaded');

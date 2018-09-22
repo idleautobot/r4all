@@ -45,7 +45,7 @@ const TraktTv = {
             return media;
         } catch (err) {
             status = false;
-            log.crit('[TraktTv] ' + err.stack);
+            log.crit('[TraktTv] ' + (err.stack || err));
 
             return null;
         }

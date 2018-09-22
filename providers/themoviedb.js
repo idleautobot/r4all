@@ -37,7 +37,7 @@ const TMDb = {
             return media;
         } catch (err) {
             status = false;
-            log.crit('[TMDb] ' + err.stack);
+            log.crit('[TMDb] ' + (err.stack || err));
 
             return null;
         }

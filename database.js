@@ -275,8 +275,10 @@ module.exports = {
     },
 
     upsertIMDb: async function(imdbInfo) {
+        const akas = imdbInfo.akas;
         delete imdbInfo.akas;
         await db.collection('imdb').updateOneAsync({ _id: imdbInfo._id }, { $set: imdbInfo, $currentDate: { updatedOn: true } }, { upsert: true });
+        imdbInfo.akas = akas;
     },
 
     // **************************************************

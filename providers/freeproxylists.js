@@ -72,7 +72,7 @@ const FreeProxyLists = {
             if (browser) await browser.close();
 
             status = false;
-            log.crit('[FreeProxyLists] ' + err.stack);
+            log.crit('[FreeProxyLists] ' + (err.stack || err));
 
             return [];
         }

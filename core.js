@@ -34,7 +34,7 @@ const Core = {
             const fetchResult = await fetchReleases();
 
             if (!_.isEmpty(fetchResult.releases)) {
-                await upsertReleases(fetchResult.release);
+                await upsertReleases(fetchResult.releases);
 
                 if (fetchResult.bootstrap) {
                     await db.upsertBootstrap(fetchResult.bootstrap);
@@ -59,7 +59,7 @@ const Core = {
 
             return;
         } catch (err) {
-            log.fatal('[core] ' + err.stack);
+            log.fatal('[core] ' + (err.stack || err));
 
             timer.clear();
             isBusy = false;

@@ -68,7 +68,7 @@ const IMDb = {
             if (browser) await browser.close();
 
             status = false;
-            log.crit('[IMDb] ' + err.stack);
+            log.crit('[IMDb] ' + (err.stack || err));
 
             return null;
         }
@@ -146,8 +146,8 @@ async function fetchInfo(page, imdbId) {
             if ($('#title-episode-widget').length) {
                 info.type = 'show';
                 info.year = Math.min.apply(Math, $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?year="]').map(function() { return parseInt($(this).text()) || null; }).get());
-                info.seasons = $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?season="]').map(function() { return parseInt($(this).text()); }).get();
-                info.numSeasons = Math.max.apply(Math, info.seasons);
+                const seasons = $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?season="]').map(function() { return parseInt($(this).text()); }).get();
+                info.numSeasons = Math.max.apply(Math, seasons);
             } else {
                 info.type = 'movie';
                 info.year = parseInt($('#titleYear > a').text());
@@ -232,81 +232,77 @@ async function fetchAKAs(page, imdbInfo) {
 }
 
 async function fetchShowEpisodes(page, imdbInfo) {
-    imdbInfo.seasons = _.sortBy(imdbInfo.seasons);
     imdbInfo.episodes = {};
 
-    for (const season of imdbInfo.seasons) {
-        if (!isNaN(season)) {
-            const url = SEASON_URL
-                .expand({ imdbId: imdbInfo._id, season: season })
-                .toString();
+    for (let season = 1; season <= imdbInfo.numSeasons; season++) {
+        const url = SEASON_URL
+            .expand({ imdbId: imdbInfo._id, season: season })
+            .toString();
 
-            debug(url);
+        debug(url);
 
-            await page.goto(url);
+        await page.goto(url);
 
-            await page.addScriptTag({ path: 'node_modules/moment/min/moment.min.js' });
+        await page.addScriptTag({ path: 'node_modules/moment/min/moment.min.js' });
 
-            const result = await page.evaluate((expectedSeason) => {
-                const result = {
-                    successful: true,
-                    episodes: {}
-                };
-                const episodes = result.episodes;
+        const result = await page.evaluate((expectedSeason) => {
+            const result = {
+                successful: true,
+                episodes: {}
+            };
+            const episodes = result.episodes;
 
-                function regex(str, regex) {
-                    try {
-                        const match = str.match(regex);
-                        match.shift(); // remove original string that was parsed
-
-                        if (match.length == 1)
-                            return match[0];
-                        else
-                            return match;
-                    } catch (err) {
-                        return null;
-                    }
-                }
-
+            function regex(str, regex) {
                 try {
-                    // validate the page
-                    if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
-                    if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (' + $('#episode_top').text() + ')';
+                    const match = str.match(regex);
+                    match.shift(); // remove original string that was parsed
 
-                    $('#episodes_content .list_item').each(function() {
-                        const parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
-
-                        if (parsed) {
-                            const season = parseInt(parsed[0]);
-                            const episode = parseInt(parsed[1]);
-                            const aired = $(this).find('.airdate').text().trim();
-
-                            if (expectedSeason != season) throw 'unexpected season, expecting \'' + expectedSeason + '\' and got \'' + season + '\'';
-
-                            const ep = episodes[episode] = {};
-
-                            ep.title = $(this).find('[itemprop="name"]').text().trim();
-                            ep.aired = moment(aired, 'D MMM. YYYY').isValid() && moment(aired, 'D MMM. YYYY').toDate();
-                            ep.description = $(this).find('.item_description').text().trim();
-                        }
-                    });
+                    if (match.length == 1)
+                        return match[0];
+                    else
+                        return match;
                 } catch (err) {
-                    result.successful = false;
-                    result.error = err;
+                    return null;
                 }
-
-                return result;
-            }, season);
-
-            if (result.successful) {
-                imdbInfo.episodes[season] = result.episodes;
-            } else {
-                throw result.error;
             }
+
+            try {
+                // validate the page
+                if (!$('#episodes_content').length) throw 'site validation failed (fetchEpisodes)';
+                if ($('#episode_top').text().replace(/[^\d]/g, '') != expectedSeason) throw 'site validation failed (' + $('#episode_top').text() + ')';
+
+                $('#episodes_content .list_item').each(function() {
+                    const parsed = regex($(this).find('.image').text().trim(), /S(\d{1,3}), Ep(\d{1,3})/i);
+
+                    if (parsed) {
+                        const season = parseInt(parsed[0]);
+                        const episode = parseInt(parsed[1]);
+                        const aired = $(this).find('.airdate').text().trim();
+
+                        if (expectedSeason != season) throw 'unexpected season, expecting \'' + expectedSeason + '\' and got \'' + season + '\'';
+
+                        const ep = episodes[episode] = {};
+
+                        ep.title = $(this).find('[itemprop="name"]').text().trim();
+                        ep.aired = moment(aired, 'D MMM. YYYY').isValid() && moment(aired, 'D MMM. YYYY').toDate();
+                        ep.description = $(this).find('.item_description').text().trim();
+                    }
+                });
+            } catch (err) {
+                result.successful = false;
+                result.error = err;
+            }
+
+            return result;
+        }, season);
+
+        if (result.successful) {
+            imdbInfo.episodes[season] = result.episodes;
+        } else {
+            throw result.error;
         }
     }
 
-    delete imdbInfo.seasons;
     return imdbInfo;
 }
 
