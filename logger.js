@@ -43,7 +43,6 @@ const logger = createLogger({
             filename: '%DATE%_debug.log',
             datePattern: 'YYYY-MM',
             level: 'fatal',
-            handleExceptions: true,
             format: format.combine(
                 format.timestamp(),
                 format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`)

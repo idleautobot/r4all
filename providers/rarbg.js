@@ -3,13 +3,23 @@
 const debug = require('debug')('RARBG');
 const _ = require('lodash');
 const URI = require('urijs');
+const URITemplate = require('urijs/src/URITemplate');
 const puppeteer = require('puppeteer');
 
 const log = require('../logger.js');
 const freeproxylists = require('./freeproxylists.js');
 
 const URL = URI('https://rarbg.to');
-const PROXY_LIST_URL = URI('http://www.freeproxylists.com/https.html');
+const TORRENT_URL = URITemplate(URL.toString() + 'torrent/{tid}');
+const RARBG_PAGES = {
+    torrentList: 'torrentList',
+    torrent: 'torrent',
+    verifying: 'verifying',
+    retry: 'retry',
+    captcha: 'captcha',
+    banned: 'banned',
+    unknown: 'unknown'
+};
 
 let status = true;
 let pageNumber = 1;
@@ -28,39 +38,76 @@ const RARBG = {
 
         try {
             if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
-            if (_.isEmpty(proxies)) throw new Error('unable to fetch proxies');
+            if (_.isEmpty(proxies)) return false;
 
             proxy = proxy || proxies.shift();
 
             browser = await puppeteer.launch({
-                args: ['--lang=en', '--no-sandbox', '--proxy-server=' + proxy]
+                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage']
             });
             const page = await browser.newPage();
-            await _.bind(loadPage, this)(page, lastRelease);
+
+            await loadReleaseListPage(page);
+            await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrentList, lastRelease);
+
+            await browser.close();
 
             if (!status) {
                 status = true;
                 debug('seems to be back');
             }
 
-            await browser.close();
             return true;
         } catch (err) {
-            if (status) {
-                status = false;
-                log.warn('[RARBG] ' + err.stack);
-            }
-
             if (browser) await browser.close();
-
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR_') || err.name === 'TimeoutError' || err.name === 'BanError') {
-                if (err.name !== 'BanError') debug(err.message);
+            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError') {
+                debug(err.message);
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
-                console.log(err);
+                status = false;
+                log.crit('[RARBG] ' + err.stack);
                 return false;
+            }
+        }
+    },
+    fetchMagnet: async function(tid) {
+        let browser = null;
+
+        try {
+            if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
+            if (_.isEmpty(proxies)) return null;
+
+            proxy = proxy || proxies.shift();
+
+            browser = await puppeteer.launch({
+                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage']
+            });
+            const page = await browser.newPage();
+
+            await loadTorrentPage(page, tid);
+            const magnet = await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrent, null, tid);
+
+            await browser.close();
+
+            if (!status) {
+                status = true;
+                debug('seems to be back');
+            }
+
+            return magnet;
+        } catch (err) {
+            if (browser) await browser.close();
+            proxy = proxies.shift();
+
+            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError') {
+                debug(err.message);
+                return await this.fetchMagnet(tid);
+            } else {
+                status = false;
+                log.crit('[RARBG] ' + err.stack);
+                return null;
             }
         }
     },
@@ -72,8 +119,8 @@ const RARBG = {
     }
 };
 
-async function loadPage(page, lastRelease) {
-    let url = URL
+async function loadReleaseListPage(page) {
+    const url = URL
         .clone()
         .segment('torrents.php')
         .addQuery({ category: '41;44;45', page: pageNumber })
@@ -83,13 +130,35 @@ async function loadPage(page, lastRelease) {
 
     await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
-    await _.bind(pageLoadedHandler, this)(page, lastRelease);
 }
 
-async function pageLoadedHandler(page, lastRelease, attempt) {
-    attempt = attempt || 0;
+async function loadTorrentPage(page, tid) {
+    const url = TORRENT_URL
+        .expand({ tid: tid })
+        .toString();
 
-    if (attempt > 1) return await _.bind(loadPage, this)(page, lastRelease);
+    debug(url + ' @' + proxy);
+
+    await page.setDefaultNavigationTimeout(60 * 1000);
+    await page.goto(url);
+}
+
+async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt = 0) {
+    if (attempt > 1) {
+        switch (expectedPage) {
+            case RARBG_PAGES.torrentList:
+                await loadReleaseListPage(page);
+                break;
+            case RARBG_PAGES.torrent:
+                await loadTorrentPage(page, tid);
+                break;
+            default:
+                // do nothing
+                break;
+        }
+
+        return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
+    }
 
     const hasjQuery = await page.evaluate(() => {
         return (typeof window.$ === 'function');
@@ -99,56 +168,71 @@ async function pageLoadedHandler(page, lastRelease, attempt) {
         await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
     }
 
-    const pageLoaded = await page.evaluate(() => {
-        let pageLoaded = 'unknown';
+    const pageLoaded = await page.evaluate((RARBG_PAGES, expectedPage) => {
+        let pageLoaded = RARBG_PAGES.unknown;
 
         try {
-            if ($('.lista2t').length) {
-                pageLoaded = 'torrents';
+            if ($('table.lista2t').length && expectedPage == RARBG_PAGES.torrentList) {
+                pageLoaded = RARBG_PAGES.torrentList;
+            } else if ($('table.lista').length && expectedPage == RARBG_PAGES.torrent) {
+                pageLoaded = RARBG_PAGES.torrent;
             } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
-                pageLoaded = 'verifying';
+                pageLoaded = RARBG_PAGES.verifying;
             } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
-                pageLoaded = 'retry';
+                pageLoaded = RARBG_PAGES.retry;
             } else if ($('#solve_string').length) {
-                pageLoaded = 'captcha';
+                pageLoaded = RARBG_PAGES.captcha;
             } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
-                pageLoaded = 'banned';
+                pageLoaded = RARBG_PAGES.banned;
             }
         } catch (err) {}
 
         return pageLoaded;
-    });
+    }, RARBG_PAGES, expectedPage);
 
     switch (pageLoaded) {
-        case 'torrents':
+        case RARBG_PAGES.torrentList:
             const done = await _.bind(getReleasesFromPage, this)(page, lastRelease);
 
-            if (done) {
-                return;
-            } else {
+            if (!done) {
                 await sleep(((Math.random() * 5) + 10) * 1000);
                 pageNumber++;
-                return await _.bind(loadPage, this)(page, lastRelease);
+                await loadReleaseListPage(page);
+                return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease);
+            } else {
+                return;
             }
-        case 'verifying':
+        case RARBG_PAGES.torrent:
+            return await getTorrentMagnet(page);
+        case RARBG_PAGES.verifying:
             debug('verifying the browser...');
             await page.waitForNavigation()
-            return await _.bind(pageLoadedHandler, this)(page, lastRelease, ++attempt);
-        case 'retry':
+            return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid, ++attempt);
+        case RARBG_PAGES.retry:
             debug('retry verifying the browser...');
             await verifyBrowser(page);
-            return await _.bind(pageLoadedHandler, this)(page, lastRelease);
-        case 'captcha':
+            return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
+        case RARBG_PAGES.captcha:
             debug('solving captcha...');
             await solveCaptcha(page);
-            return await _.bind(loadPage, this)(page, lastRelease);
-        case 'banned':
-            debug('banned...');
-            const e = new Error('banned');
+            switch (expectedPage) {
+                case RARBG_PAGES.torrentList:
+                    await loadReleaseListPage(page);
+                    break;
+                case RARBG_PAGES.torrent:
+                    await loadTorrentPage(page, tid);
+                    break;
+                default:
+                    // do nothing
+                    break;
+            }
+
+            return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
+        case RARBG_PAGES.banned:
+            const e = new Error('banned...');
             e.name = 'BanError';
             throw e;
         default:
-            debug('unknown page loaded');
             await unknownPage(page);
             throw new Error('unknown page loaded');
     }
@@ -189,12 +273,14 @@ async function getReleasesFromPage(page, lastRelease) {
 
                 const release = {
                     _id: null,
+                    tid: regex($(col2).find('a[href^="/torrent/"]').attr('href'), /\/torrent\/(\w+)/i),
                     name: $(col2).find('a[href^="/torrent/"]').text().trim().replace(/\[.+\]$/, ''),
                     category: parseInt(regex($(col1).find('a[href^="/torrents.php?category="]').attr('href'), /\/torrents\.php\?category=(\d+)/i)),
                     pubdate: $(col3).text().trim(),
                     imdbId: regex($(col2).find('a[href^="/torrents.php?imdb="]').attr('href'), /\/torrents\.php\?imdb=(tt\d+)/i),
                     type: null,
                     quality: null,
+                    magnet: null,
                     page: page
                 };
 
@@ -250,6 +336,14 @@ async function getReleasesFromPage(page, lastRelease) {
     } else {
         throw new Error(result.error);
     }
+}
+
+async function getTorrentMagnet(page) {
+    const magnet = await page.evaluate(() => {
+        return $('a[href^="magnet:"]').attr('href');
+    });
+
+    return magnet;
 }
 
 async function solveCaptcha(page) {

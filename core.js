@@ -206,7 +206,7 @@ async function upsertReleases(releases) {
 
         if (release.type == 'show' && parsed) {
             release.season = parsed.season;
-            release.episodes = parsed.episodes;
+            release.episodes = parsed.episode;
         }
 
         if (!release.imdbId || !parsed) {

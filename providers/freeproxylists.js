@@ -18,7 +18,7 @@ const FreeProxyLists = {
 
         try {
             browser = await puppeteer.launch({
-                args: ['--lang=en', '--no-sandbox']
+                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage']
             });
             const page = await browser.newPage();
 
@@ -69,12 +69,10 @@ const FreeProxyLists = {
                 throw new Error(result.error);
             }
         } catch (err) {
-            if (status) {
-                status = false;
-                log.warn('[FreeProxyLists] ' + err.stack);
-            }
-
             if (browser) await browser.close();
+
+            status = false;
+            log.crit('[FreeProxyLists] ' + err.stack);
 
             return [];
         }
