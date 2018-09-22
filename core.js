@@ -282,7 +282,7 @@ async function verifyMovie(release) {
     let validated = false;
 
     // Movie Title check
-    const releaseTitle = parsed.title.replace(/-/g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
+    const releaseTitle = parsed.title.replace(/-/g, '.').replace(/ /g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
     let movieTitleEncoded = common.scene.titleEncode(imdbInfo.title).toUpperCase(); // encode imdb movie title
 
     if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare movie title

@@ -24,7 +24,7 @@ module.exports = {
     },
 
     getLastRelease: async function() {
-        return await db.collection('releases').find({}, { _id: 0, name: 1, pubdate: 1 }).sort({ pubdate: -1 }).limit(1).nextAsync();
+        return await db.collection('releases').find().project({ _id: 0, name: 1, pubdate: 1 }).sort({ pubdate: -1 }).limit(1).nextAsync();
     },
 
     getReleasesWithoutMagnetLink: async function() {
@@ -56,7 +56,7 @@ module.exports = {
     },
 
     getLastEpisode: async function(imdbId, quality) {
-        return await db.collection('releases').aggregateAsync([{
+        return await db.collection('releases').aggregate([{
             $match: { imdbId: imdbId, quality: quality, isVerified: true }
         }, {
             $unwind: {
@@ -66,7 +66,7 @@ module.exports = {
             $sort: { 'season': -1, 'episode': -1, 'pubdate': 1 }
         }, {
             $limit: 1
-        }]);
+        }]).toArrayAsync();
     },
 
     // getReleaseSubtitle: async function(releaseId) {
@@ -285,11 +285,11 @@ module.exports = {
     // database maintenance
     // **************************************************
     getIMDbOutdated: async function() {
-        const docs = await db.collection('imdb').aggregateAsync([
+        const docs = await db.collection('imdb').aggregate([
             { $sort: { updatedOn: 1 } },
             { $limit: 1 },
             { $project: { _id: 1, type: 1 } }
-        ]);
+        ]).toArrayAsync();
 
         return docs[0];
     },
@@ -302,7 +302,7 @@ module.exports = {
     },
 
     getMemoryUsage: async function() {
-        return await db.collection('memory').aggregateAsync([{
+        return await db.collection('memory').aggregate([{
             $sort: { date: 1 }
         }, {
             $project: {
@@ -310,7 +310,7 @@ module.exports = {
                 x: { $subtract: ['$date', new Date('1970-01-01')] },
                 y: { $divide: ['$rss', 1048576] }
             }
-        }]);
+        }]).toArrayAsync();
     },
 
     // **************************************************

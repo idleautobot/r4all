@@ -74,26 +74,51 @@ function memoryUsage() {
 
 process.env.NODE_ENV = 'production';
 
-(function initApp(isProduction) {
-    app.locals.db.initialize()
-        .then(function() {
-            return isProduction && memoryUsage();
-        })
-        .then(function() {
-            http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
-                debug('express server listening on port ' + app.get('port'));
-                return (isProduction && app.locals.core.refresh());
-            });
-        })
-        .catch(function(err) {
-            console.log(err);
-        });
-})(process.env.NODE_ENV === 'production');
+// (function initApp(isProduction) {
+//     app.locals.db.initialize()
+//         .then(function() {
+//             return isProduction && memoryUsage();
+//         })
+//         .then(function() {
+//             http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
+//                 debug('express server listening on port ' + app.get('port'));
+//                 return (isProduction && app.locals.core.refresh());
+//             });
+//         })
+//         .catch(function(err) {
+//             console.log(err);
+//         });
+// })(process.env.NODE_ENV === 'production');
 
 
 
 
 
+// (async () => {
+// const oleoo = require('oleoo');
+
+//     let imdbInfo = await app.locals.providers.imdb.fetch('tt7158430', 'movie');
+
+//     const parsed = oleoo.parse('Hearts.Beat.Loud.2018.1080p.BluRay.X264-AMIABLE', { strict: true });
+//     let validated = false;
+// console.log(parsed);
+//     // Movie Title check
+//     const releaseTitle = parsed.title.replace(/-/g, '.').replace(/ /g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
+//     console.log(releaseTitle);
+//     let movieTitleEncoded = app.locals.common.scene.titleEncode(imdbInfo.title).toUpperCase(); // encode imdb movie title
+// console.log(movieTitleEncoded);
+//     if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare movie title
+//         validated = true;
+//     } 
+
+//     // Year && Type check
+//     validated = validated && (imdbInfo.year == parseInt(parsed.year));
+//     console.log(validated);
+//     // if (doc) {
+//     //     const imdbInfo = await providers.imdb.fetch(doc._id, doc.type);
+//     //     imdbInfo && await db.upsertIMDb(imdbInfo);
+//     // }
+// })();
 
 
 
