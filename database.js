@@ -27,9 +27,17 @@ module.exports = {
         return await db.collection('releases').find({}, { _id: 0, name: 1, pubdate: 1 }).sort({ pubdate: -1 }).limit(1).nextAsync();
     },
 
+    getReleasesWithoutMagnetLink: async function() {
+        return await db.collection('releases').aggregate([{
+            $match: { magnet: null }
+        }, {
+            $sort: { pubdate: 1 }
+        }]).toArrayAsync();
+    },
+
     getReleasesToVerify: async function() {
         return await db.collection('releases').aggregate([{
-            $match: { isVerified: null }
+            $match: { magnet: { $ne: null }, isVerified: null }
         }, {
             $sort: { pubdate: 1 }
         }, {

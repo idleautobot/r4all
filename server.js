@@ -74,21 +74,21 @@ function memoryUsage() {
 
 process.env.NODE_ENV = 'production';
 
-// (function initApp(isProduction) {
-//     app.locals.db.initialize()
-//         .then(function() {
-//             return isProduction && memoryUsage();
-//         })
-//         .then(function() {
-//             http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
-//                 debug('express server listening on port ' + app.get('port'));
-//                 return (isProduction && app.locals.core.refresh());
-//             });
-//         })
-//         .catch(function(err) {
-//             console.log(err);
-//         });
-// })(process.env.NODE_ENV === 'production');
+(function initApp(isProduction) {
+    app.locals.db.initialize()
+        .then(function() {
+            return isProduction && memoryUsage();
+        })
+        .then(function() {
+            http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
+                debug('express server listening on port ' + app.get('port'));
+                return (isProduction && app.locals.core.refresh());
+            });
+        })
+        .catch(function(err) {
+            console.log(err);
+        });
+})(process.env.NODE_ENV === 'production');
 
 
 

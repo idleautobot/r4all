@@ -41,6 +41,8 @@ const Core = {
                 }
             }
 
+            await setReleasesMagnetLink();
+
             await verifyReleases();
 
             await refreshIMDbOutdated();
@@ -64,7 +66,7 @@ const Core = {
             status = false;
 
             return;
-        };
+        }
     },
     // ###
     fetchSubtitle: async function(releaseId, forceFetch) {
@@ -225,6 +227,31 @@ async function upsertReleases(releases) {
         }
 
         await db.upsertRelease(release);
+    }
+}
+
+// **************************************************
+// set releases torrent
+// **************************************************
+async function setReleasesMagnetLink() {
+    debug('set releases magnet link...');
+
+    const rarbg = providers.rarbg;
+    const releases = await db.getReleasesWithoutMagnetLink();
+
+    for (const release of releases) {
+        try {
+            const magnet = await rarbg.fetchMagnet(release.tid);
+
+            if (magnet) {
+                const r = {
+                    _id: release._id,
+                    magnet: magnet
+                };
+
+                await db.upsertRelease(r);
+            }
+        } catch (err) {}
     }
 }
 

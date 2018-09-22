@@ -104,7 +104,7 @@ function get(endpoint, getVariables) {
 
                 try {
                     res = JSON.parse(body);
-                } catch (e) {}
+                } catch (err) {}
 
                 resolve(res);
             }
