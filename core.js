@@ -231,7 +231,7 @@ async function upsertReleases(releases) {
 }
 
 // **************************************************
-// set releases torrent
+// set releases magnet link
 // **************************************************
 async function setReleasesMagnetLink() {
     debug('set releases magnet link...');

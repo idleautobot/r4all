@@ -18,6 +18,7 @@ const RARBG_PAGES = {
     retry: 'retry',
     captcha: 'captcha',
     banned: 'banned',
+    cloudflare: 'cloudflare',
     unknown: 'unknown'
 };
 
@@ -62,7 +63,7 @@ const RARBG = {
             if (browser) await browser.close();
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError') {
+            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError' || err.name === 'CloudflareProtection') {
                 debug(err.message);
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
@@ -101,7 +102,7 @@ const RARBG = {
             if (browser) await browser.close();
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError') {
+            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError' || err.name === 'CloudflareProtection') {
                 debug(err.message);
                 return await this.fetchMagnet(tid);
             } else {
@@ -184,6 +185,8 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
                 pageLoaded = RARBG_PAGES.captcha;
             } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
                 pageLoaded = RARBG_PAGES.banned;
+            } else if ($('#cf-wrapper').length) {
+                pageLoaded = RARBG_PAGES.cloudflare;
             }
         } catch (err) {}
 
@@ -231,6 +234,10 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
         case RARBG_PAGES.banned:
             const e = new Error('banned...');
             e.name = 'BanError';
+            throw e;
+        case RARBG_PAGES.cloudflare:
+            const e = new Error('cloudflare protection...');
+            e.name = 'CloudflareProtection';
             throw e;
         default:
             await unknownPage(page);
