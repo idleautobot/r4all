@@ -232,13 +232,13 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
 
             return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
         case RARBG_PAGES.banned:
-            const e = new Error('banned...');
-            e.name = 'BanError';
-            throw e;
+            const eBanned = new Error('banned...');
+            eBanned.name = 'BanError';
+            throw eBanned;
         case RARBG_PAGES.cloudflare:
-            const e = new Error('cloudflare protection...');
-            e.name = 'CloudflareProtection';
-            throw e;
+            const eCloudflare = new Error('cloudflare protection...');
+            eCloudflare.name = 'CloudflareProtection';
+            throw eCloudflare;
         default:
             await unknownPage(page);
             throw new Error('unknown page loaded');
