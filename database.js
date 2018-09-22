@@ -49,7 +49,7 @@ module.exports = {
 
     getLastEpisode: async function(imdbId, quality) {
         return await db.collection('releases').aggregateAsync([{
-            $match: { imdbId: imdbId, quality: quality }
+            $match: { imdbId: imdbId, quality: quality, isVerified: true }
         }, {
             $unwind: {
                 path: '$episodes'
@@ -61,27 +61,27 @@ module.exports = {
         }]);
     },
 
-    getReleaseSubtitle: async function(releaseId) {
-        return await db.collection('releases').aggregateAsync([{
-                $match: { _id: releaseId }
-            }, {
-                $lookup: {
-                    from: 'imdb',
-                    localField: 'imdbId',
-                    foreignField: '_id',
-                    as: 'imdb'
-                }
-            }, {
-                $unwind: {
-                    path: '$imdb'
-                }
-            }, {
-                $limit: 1
-            }])
-            .then(function(docs) {
-                return docs[0];
-            });
-    },
+    // getReleaseSubtitle: async function(releaseId) {
+    //     return await db.collection('releases').aggregateAsync([{
+    //             $match: { _id: releaseId }
+    //         }, {
+    //             $lookup: {
+    //                 from: 'imdb',
+    //                 localField: 'imdbId',
+    //                 foreignField: '_id',
+    //                 as: 'imdb'
+    //             }
+    //         }, {
+    //             $unwind: {
+    //                 path: '$imdb'
+    //             }
+    //         }, {
+    //             $limit: 1
+    //         }])
+    //         .then(function(docs) {
+    //             return docs[0];
+    //         });
+    // },
     // **************************************************
     // get - dashboard
     // **************************************************
@@ -215,84 +215,84 @@ module.exports = {
 
 
     //TODO******************************************************************************************************************
-    getUnverifiedMovies: function() {
-        return db.collection('releases').find({
-            isVerified: 0,
-            $or: [{
-                category: 'm720p'
-            }, {
-                category: 'm1080p'
-            }]
-        }, {
-            name: 1,
-            imdbId: 1,
-            ddlvalley: 1,
-            rlsbb: 1,
-            twoddl: 1,
-        }).sort({ name: 1 }).toArrayAsync();
-    },
+    // getUnverifiedMovies: function() {
+    //     return db.collection('releases').find({
+    //         isVerified: 0,
+    //         $or: [{
+    //             category: 'm720p'
+    //         }, {
+    //             category: 'm1080p'
+    //         }]
+    //     }, {
+    //         name: 1,
+    //         imdbId: 1,
+    //         ddlvalley: 1,
+    //         rlsbb: 1,
+    //         twoddl: 1,
+    //     }).sort({ name: 1 }).toArrayAsync();
+    // },
 
-    getUnverifiedShows: function() {
-        return db.collection('imdb').find({ type: 'show', isVerified: false }).sort({ title: 1 }).toArrayAsync();
-    },
+    // getUnverifiedShows: function() {
+    //     return db.collection('imdb').find({ type: 'show', isVerified: false }).sort({ title: 1 }).toArrayAsync();
+    // },
 
-    getReleasesCount: function() {
-        return db.collection('releases').aggregateAsync({
-            $group: {
-                _id: {
-                    type: '$type',
-                    quality: '$quality',
-                    isVerified: '$isVerified'
-                },
-                count: { $sum: 1 }
-            }
-        });
-    },
+    // getReleasesCount: function() {
+    //     return db.collection('releases').aggregateAsync({
+    //         $group: {
+    //             _id: {
+    //                 type: '$type',
+    //                 quality: '$quality',
+    //                 isVerified: '$isVerified'
+    //             },
+    //             count: { $sum: 1 }
+    //         }
+    //     });
+    // },
 
-    getUnverifiedShowsCount: function() {
-        return db.collection('imdb').countAsync({ type: 'show', isVerified: false });
-    },
+    // getUnverifiedShowsCount: function() {
+    //     return db.collection('imdb').countAsync({ type: 'show', isVerified: false });
+    // },
 
     // **************************************************
     // upsert
     // **************************************************
-    upsertBootstrap: function(bootstrap) {
+    upsertBootstrap: async function(bootstrap) {
         bootstrap._id = 1;
-        return db.collection('bootstrap').updateOneAsync({ _id: bootstrap._id }, { $set: bootstrap }, { upsert: true });
+        await db.collection('bootstrap').updateOneAsync({ _id: bootstrap._id }, { $set: bootstrap }, { upsert: true });
     },
 
-    upsertRelease: function(release) {
+    upsertRelease: async function(release) {
         delete release.page;
-        return db.collection('releases').updateOneAsync({ _id: release._id }, { $set: release }, { upsert: true });
+        await db.collection('releases').updateOneAsync({ _id: release._id }, { $set: release }, { upsert: true });
     },
 
-    upsertIMDb: function(imdbInfo) {
-        return db.collection('imdb').updateOneAsync({ _id: imdbInfo._id }, { $set: imdbInfo, $currentDate: { updatedOn: true } }, { upsert: true });
+    upsertIMDb: async function(imdbInfo) {
+        delete imdbInfo.akas;
+        await db.collection('imdb').updateOneAsync({ _id: imdbInfo._id }, { $set: imdbInfo, $currentDate: { updatedOn: true } }, { upsert: true });
     },
 
     // **************************************************
     // database maintenance
     // **************************************************
-    getIMDbOutdated: function() {
-        return db.collection('imdb').aggregateAsync([
-                { $sort: { updatedOn: 1 } },
-                { $limit: 1 },
-                { $project: { _id: 1, type: 1 } }
-            ])
-            .then(function(docs) {
-                return docs[0];
-            });
+    getIMDbOutdated: async function() {
+        const docs = await db.collection('imdb').aggregateAsync([
+            { $sort: { updatedOn: 1 } },
+            { $limit: 1 },
+            { $project: { _id: 1, type: 1 } }
+        ]);
+
+        return docs[0];
     },
 
     // **************************************************
     // memory
     // **************************************************
-    insertMemoryUsage: function(data) {
-        return db.collection('memory').insertOneAsync(data);
+    insertMemoryUsage: async function(data) {
+        await db.collection('memory').insertOneAsync(data);
     },
 
-    getMemoryUsage: function() {
-        return db.collection('memory').aggregateAsync([{
+    getMemoryUsage: async function() {
+        return await db.collection('memory').aggregateAsync([{
             $sort: { date: 1 }
         }, {
             $project: {

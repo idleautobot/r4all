@@ -18,9 +18,9 @@ const providers = {
     //legendasdivx: require('./providers/legendasdivx.js')
 };
 
-let status = true;
+let status = false;
 let isBusy = false;
-let refreshes = 0;
+let refreshCount = 0;
 let lastRefresh = null;
 
 const Core = {
@@ -31,20 +31,23 @@ const Core = {
         debug('refreshing...');
 
         try {
-            const newReleases = await fetchReleases();
+            const fetchResult = await fetchReleases();
 
-            if(!_.isEmpty(newReleases)) {
-                await upsertReleases(newReleases);
+            if (!_.isEmpty(fetchResult.releases)) {
+                await upsertReleases(fetchResult.release);
+
+                if (fetchResult.bootstrap) {
+                    await db.upsertBootstrap(fetchResult.bootstrap);
+                }
             }
 
-            // ###
-            //await verifyReleases();
+            await verifyReleases();
 
-            //await refreshIMDbOutdated();
+            await refreshIMDbOutdated();
 
             imdbList.clear();
 
-            refreshes++;
+            refreshCount++;
             lastRefresh = moment();
 
             timer.set();
@@ -119,8 +122,13 @@ const Core = {
         //     });
     },
     stop: function() {
-        timer.clear();
-        status = false;
+        if (!isBusy) {
+            timer.clear();
+            status = false;
+            return true;
+        } else {
+            return false;
+        }
     },
     isOn: function() {
         return status;
@@ -157,10 +165,13 @@ async function fetchReleases() {
     debug('fetching new releases...');
 
     const rarbg = providers.rarbg;
+    const result = {
+        releases: []
+    };
 
-    let [lastRelease, bootstrap] = await Promise.all([
-        db.getLastRelease(),
-        db.getBootstrap()
+    let [bootstrap, lastRelease] = await Promise.all([
+        db.getBootstrap(),
+        db.getLastRelease()
     ]);
 
     bootstrap = bootstrap || {};
@@ -175,19 +186,19 @@ async function fetchReleases() {
     const success = await rarbg.fetchReleases(lastRelease, bootstrap.lastPage);
 
     if (_.isEmpty(rarbg.newReleases) || (!success && bootstrap.done)) {
-        return [];
+        // do nothing
+    } else {
+        result.releases = _.sortBy(rarbg.newReleases, 'pubdate');
+
+        if (!bootstrap.done) {
+            result.bootstrap = {
+                done: success,
+                lastPage: _.max([bootstrap.lastPage, _.maxBy(result.releases, 'page').page])
+            };
+        }
     }
 
-    const newReleases = _.sortBy(rarbg.newReleases, 'pubdate');
-
-    if (!bootstrap.done) {
-        await db.upsertBootstrap({
-            done: success,
-            lastPage: _.max([bootstrap.lastPage, _.maxBy(newReleases, 'page').page])
-        });
-    }
-
-    return newReleases;
+    return result;
 }
 
 // **************************************************
@@ -226,109 +237,94 @@ async function verifyReleases() {
     const releases = await db.getReleasesToVerify();
 
     for (const release of releases) {
-        await verifyRelease(release);
+        if (release.type == 'movie') {
+            await verifyMovie(release);
+        } else {
+            await verifyShow(release);
+        }
     }
 }
 
-async function verifyRelease(release) {
-    if (release.type == 'movie') {
-        await verifyMovie(release);
+async function verifyMovie(release) {
+    let imdbInfo = imdbList.get(release.imdbId);
+
+    if (!imdbInfo) imdbInfo = await providers.imdb.fetch(release.imdbId, release.type);
+    if (!imdbInfo) return;
+
+    const parsed = oleoo.parse(release.name, { strict: true });
+    let validated = false;
+
+    // Movie Title check
+    const releaseTitle = parsed.title.replace(/-/g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
+    let movieTitleEncoded = common.scene.titleEncode(imdbInfo.title).toUpperCase(); // encode imdb movie title
+
+    if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare movie title
+        validated = true;
     } else {
-        await verifyShow(release);
-    }
-}
+        imdbInfo.akas.some(function(aka) {
+            movieTitleEncoded = common.scene.titleEncode(aka).toUpperCase();
 
-//###
-function verifyMovie(release) {
-    return Promise.resolve(imdbList.get(release.imdbId) || providers.imdb.fetchInfo(release.imdbId, release.type))
-        .then(function(imdbInfo) {
-            if (!imdbInfo) {
-                return;
-            }
-
-            var parsed = new Release(release.name);
-            var validated = false;
-
-            // Movie Title check
-            var releaseTitle = parsed.title.replace(/-/g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
-            var movieTitleEncoded = common.scene.titleEncode(imdbInfo.title).toUpperCase(); // encode imdb movie title
-
-            if (movieTitleEncoded != '' && (releaseTitle.indexOf(movieTitleEncoded) != -1 || movieTitleEncoded.indexOf(releaseTitle) != -1)) { // compare movie title
+            if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare aka movie title
+                imdbInfo.aka = aka;
                 validated = true;
-            } else {
-                imdbInfo.akas.some(function(aka) {
-                    movieTitleEncoded = common.scene.titleEncode(aka).toUpperCase();
-
-                    if (movieTitleEncoded != '' && (releaseTitle.indexOf(movieTitleEncoded) != -1 || movieTitleEncoded.indexOf(releaseTitle) != -1)) { // compare aka movie title
-                        imdbInfo.aka = aka;
-                        validated = true;
-                        return true;
-                    }
-
-                    return false;
-                });
+                return true;
             }
 
-            // Year && Type check
-            validated = validated && (imdbInfo.year == parseInt(parsed.year));
-
-            var pubdateProperty = 'pubdate' + release.quality;
-            var r = {
-                _id: release._id,
-                imdbId: imdbInfo._id, // because of imdb redirects, initial imdbId could not be the final one)
-                isVerified: validated
-            };
-
-            if (release.imdb == null || release.imdb[pubdateProperty] == null) {
-                imdbInfo[pubdateProperty] = release.pubdate;
-            }
-
-            return db.upsertIMDb(imdbInfo)
-                .then(function() {
-                    imdbList.add(imdbInfo);
-                    return db.upsertRelease(r);
-                });
+            return false;
         });
+    }
+
+    // Year && Type check
+    validated = validated && (imdbInfo.year == parseInt(parsed.year));
+
+    const pubdateProperty = 'pubdate' + release.quality;
+
+    if (release.imdb == null || release.imdb[pubdateProperty] == null) {
+        imdbInfo[pubdateProperty] = release.pubdate;
+    }
+
+    await db.upsertIMDb(imdbInfo);
+    imdbList.add(imdbInfo);
+
+    const r = {
+        _id: release._id,
+        imdbId: imdbInfo._id, // because of imdb redirects, initial imdbId could not be the final one)
+        isVerified: validated
+    };
+
+    await db.upsertRelease(r);
 }
-//###
-function verifyShow(release) {
-    return Promise.resolve(imdbList.get(release.imdbId) || providers.imdb.fetchInfo(release.imdbId, release.type))
-        .then(function(imdbInfo) {
-            if (!imdbInfo) {
-                return;
-            }
 
-            var isNewEpisodePromise;
-            var pubdateProperty = 'pubdate' + release.quality;
-            var r = {
-                _id: release._id,
-                imdbId: imdbInfo._id, // because of imdb redirects, initial imdbId could not be the final one)
-                isVerified: true
-            };
+async function verifyShow(release) {
+    let imdbInfo = imdbList.get(release.imdbId);
 
-            if (release.imdb == null || release.imdb[pubdateProperty] == null) {
-                isNewEpisodePromise = Promise.resolve(true);
-            } else {
-                isNewEpisodePromise = db.getLastEpisode(imdbInfo._id, release.quality)
-                    .then(function(lastEpisode) {
-                        // return isNewEpisode
-                        return (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episodes) > lastEpisode.episodes) || (release._id == lastEpisode._id);
-                    });
-            }
+    if (!imdbInfo) imdbInfo = await providers.imdb.fetch(release.imdbId, release.type);
+    if (!imdbInfo) return;
 
-            return isNewEpisodePromise
-                .then(function(isNewEpisode) {
-                    if (isNewEpisode) {
-                        imdbInfo[pubdateProperty] = release.pubdate;
-                    }
+    const pubdateProperty = 'pubdate' + release.quality;
+    let isNewEpisode;
 
-                    return db.upsertIMDb(imdbInfo);
-                })
-                .then(function() {
-                    imdbList.add(imdbInfo);
-                    return db.upsertRelease(r);
-                });
-        });
+    if (release.imdb == null || release.imdb[pubdateProperty] == null) {
+        isNewEpisode = true;
+    } else {
+        const lastEpisode = await db.getLastEpisode(imdbInfo._id, release.quality);
+        isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episodes) > lastEpisode.episodes);
+    }
+
+    if (isNewEpisode) {
+        imdbInfo[pubdateProperty] = release.pubdate;
+    }
+
+    await db.upsertIMDb(imdbInfo);
+    imdbList.add(imdbInfo);
+
+    const r = {
+        _id: release._id,
+        imdbId: imdbInfo._id, // because of imdb redirects, initial imdbId could not be the final one)
+        isVerified: true
+    };
+
+    await db.upsertRelease(r);
 }
 
 // **************************************************
