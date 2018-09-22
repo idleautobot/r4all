@@ -3,51 +3,47 @@
 const debug = require('debug')('TMDb');
 const Promise = require('bluebird');
 const URI = require('urijs');
+const MovieDB = Promise.promisifyAll(require('moviedb')('9e7a54d8b8d4ea33d0dee0032532670a'));
 
 const log = require('../logger.js');
 
-const MovieDB = Promise.promisifyAll(require('moviedb')('9e7a54d8b8d4ea33d0dee0032532670a'));
+const URL = URI('https://www.themoviedb.org');
 
 let status = true;
-const URL = URI('https://www.themoviedb.org');
 let baseURL = null;
 
 const TMDb = {
     fetch: async function(imdbId, type) {
-        return Promise.resolve(baseURL || MovieDB.configurationAsync())
-            .then(function(res) {
-                if (!baseURL) {
-                    if ('images' in res && 'secure_base_url' in res.images) {
-                        baseURL = res.images.secure_base_url;
-                    } else {
-                        throw 'unable to fetch baseURL';
-                    }
-                }
+        try {
+            if (!baseURL) {
+                const res = await MovieDB.configurationAsync();
 
-                return MovieDB.findAsync({ id: imdbId, external_source: 'imdb_id' });
-            })
-            .then(function(res) {
-                return fetchMedia(res, type);
-            })
-            .then(function(media) {
-                if (!status) {
-                    status = true;
-                    debug('seems to be back');
+                if ('images' in res && 'secure_base_url' in res.images) {
+                    baseURL = res.images.secure_base_url;
+                } else {
+                    throw 'unable to fetch baseURL';
                 }
+            }
 
-                return media;
-            })
-            .catch(function(err) {
-                if (status) {
-                    status = false;
-                    log.warn('[TMDb]', err);
-                }
+            const res = await MovieDB.findAsync({ id: imdbId, external_source: 'imdb_id' });
 
-                return null;
-            });
+            const media = fetchMedia(res, type);
+
+            if (!status) {
+                status = true;
+                debug('seems to be back');
+            }
+
+            return media;
+        } catch (err) {
+            status = false;
+            log.crit('[TMDb] ' + err.stack);
+
+            return null;
+        }
     },
     resizeImage: function(imageUrl, size) {
-        var toSize;
+        let toSize;
 
         switch (size) {
             case 'thumb':
@@ -58,6 +54,7 @@ const TMDb = {
                 break;
             default:
                 toSize = '/original/';
+                break;
         }
 
         return imageUrl.replace(/\/original\//i, toSize);
@@ -71,8 +68,8 @@ const TMDb = {
 };
 
 function fetchMedia(res, type) {
-    var media = {};
-    var objLabel = (type == 'movie' ? 'movie_results' : 'tv_results');
+    const media = {};
+    const objLabel = (type == 'movie' ? 'movie_results' : 'tv_results');
 
     // validation
     if (objLabel in res && res[objLabel].length != 0) {
@@ -81,6 +78,6 @@ function fetchMedia(res, type) {
     }
 
     return media;
-};
+}
 
 module.exports = TMDb;

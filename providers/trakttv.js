@@ -7,6 +7,7 @@ const URI = require('urijs');
 
 const log = require('../logger.js');
 
+const URL = URI('https://twitter.com/traktapi');
 const API_ENDPOINT = URI('https://api-v2launch.trakt.tv');
 const CLIENT_ID = 'e789bf52a39f68bb829f86a78aa61e2f03fff1415079ce802c2b83a6ac9592ea';
 const STATUS_CODES = {
@@ -27,35 +28,38 @@ const STATUS_CODES = {
 };
 
 let status = true;
-const URL = URI('https://twitter.com/traktapi');
 
 const TraktTv = {
     fetch: async function(imdbId, type) {
-        return get(type + 's/' + imdbId, {
+        try {
+            const res = await get(type + 's/' + imdbId, {
                 extended: 'full'
-            })
-            .then(fetchMedia)
-            .then(function(media) {
-                if (!status) {
-                    status = true;
-                    debug('seems to be back');
-                }
-
-                return media;
-            })
-            .catch(function(err) {
-                if (status) {
-                    status = false;
-                    log.warn('[TraktTv]', err);
-                }
-
-                return null;
             });
+
+            const media = fetchMedia(res);
+            if (!status) {
+                status = true;
+                debug('seems to be back');
+            }
+
+            return media;
+        } catch (err) {
+            status = false;
+            log.crit('[TraktTv] ' + err.stack);
+
+            return null;
+        }
+    },
+    getURL: function() {
+        return URL;
+    },
+    isOn: function() {
+        return status;
     }
 };
 
-var fetchMedia = function(obj) {
-    var media = {};
+function fetchMedia(obj) {
+    const media = {};
 
     // validation
     if ('trailer' in obj) {
@@ -64,26 +68,27 @@ var fetchMedia = function(obj) {
     }
 
     return media;
-};
+}
 
 /*
  * Trakt v2
  * METHODS (http://docs.trakt.apiary.io/)
  */
 
-var get = function(endpoint, getVariables) {
+function get(endpoint, getVariables) {
     return new Promise(function(resolve, reject) {
         getVariables = getVariables || {};
 
-        var requestUri = API_ENDPOINT.clone()
+        const requestUri = API_ENDPOINT.clone()
             .segment(endpoint)
-            .addQuery(getVariables);
+            .addQuery(getVariables)
+            .toString();
 
-        debug(requestUri.toString());
+        debug(requestUri);
 
         request({
             method: 'GET',
-            url: requestUri.toString(),
+            url: requestUri,
             headers: {
                 'Content-Type': 'application/json',
                 'trakt-api-version': '2',
@@ -95,7 +100,7 @@ var get = function(endpoint, getVariables) {
             } else if (response.statusCode >= 400) {
                 reject(response.statusCode + ': ' + STATUS_CODES[response.statusCode]);
             } else {
-                var res = {};
+                let res = {};
 
                 try {
                     res = JSON.parse(body);
@@ -105,6 +110,6 @@ var get = function(endpoint, getVariables) {
             }
         });
     });
-};
+}
 
 module.exports = TraktTv;

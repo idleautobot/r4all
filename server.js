@@ -1,6 +1,6 @@
 'use strict';
 
-process.env.DEBUG = 'Server, Core, Addic7ed, IMDb, LegendasDivx, RARBG, FreeProxyLists';
+process.env.DEBUG = 'Server, FreeProxyLists, Core, RARBG, IMDb, Addic7ed, LegendasDivx';
 
 var path = require('path');
 var http = require('http');
@@ -74,45 +74,21 @@ function memoryUsage() {
 
 process.env.NODE_ENV = 'production';
 
-(function initApp(isProduction) {
-    app.locals.db.initialize()
-        .then(function() {
-            return isProduction && memoryUsage();
-        })
-        .then(function() {
-            http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
-                debug('express server listening on port ' + app.get('port'));
-                return (isProduction && app.locals.core.refresh());
-            });
-        })
-        .catch(function(err) {
-            console.log(err);
-        });
-})(process.env.NODE_ENV === 'production');
-
-
-
-
-
-// (async () => {
-// const imdbInfo = await app.locals.providers.imdb.fetch('tt0418279', 'movie');
-// console.log(imdbInfo);
-// })();
-
-// (async () => {
-//   const imdbInfo = await app.locals.providers.imdb.fetch('tt6468322', 'show');
-//   console.log(imdbInfo);
-// })();
-
-
-// const oleoo = require('oleoo')
-
-// let release = oleoo.parse('The.Big.Bang.Theory.S11E06.720p.HDTV.X264-DIMENSION', {
-//   strict: true, // if no main tags found, will throw an exception
-//   defaults: {} // defaults values for : language, resolution and year
-// })
-
-// console.log(console.log(release));
+// (function initApp(isProduction) {
+//     app.locals.db.initialize()
+//         .then(function() {
+//             return isProduction && memoryUsage();
+//         })
+//         .then(function() {
+//             http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
+//                 debug('express server listening on port ' + app.get('port'));
+//                 return (isProduction && app.locals.core.refresh());
+//             });
+//         })
+//         .catch(function(err) {
+//             console.log(err);
+//         });
+// })(process.env.NODE_ENV === 'production');
 
 
 
@@ -146,56 +122,3 @@ process.env.NODE_ENV = 'production';
 //     .then(function(subtitle) {
 //         console.log(subtitle);
 //     });
-
-// options
-// const options = {
-//     strict: true, // if no main tags found, will throw an exception
-//     defaults: {} // defaults values for : language, resolution and year
-// }
-
-// var Release = require('scene-release-parser');
-// var _ = app.locals._;
-
-// return app.locals.db.initialize()
-//     .then(function() {
-//         return app.locals.db.getReleasesToVerify();
-//     })
-//     .then(function(releases) {
-//         console.log('properly tagged...');
-
-//         // properly tagged
-//         _.forEach(releases, function(r) {
-//             if (r.name.indexOf(r.category.quality) == -1) {
-//                 console.log(r.name);
-//             }
-//         });
-
-//         console.log('obey scene naming rules...');
-
-//         // obey scene naming rules
-//         _.forEach(releases, function(r) {
-//             if (app.locals.common.regex(/([^a-zA-Z0-9-._() ])/, r.name)) {
-//                 console.log(r.name);
-//             }
-//         });
-
-//         // parsing
-//         _.forEach(releases, function(r) {
-//             var parsed;
-
-//             try {
-//                 parsed = new Release(r.name, options)
-//             } catch (err) {
-//                 console.log(r.name);
-//             }
-
-//             //console.log(parsed);
-//         });
-//         // var group = app.locals.common.regex(/-([a-zA-Z0-9]+)$/, release.name);
-//         // if(!group) {
-//         //     console.log(release.name)
-//         // }
-//     })
-//     .then(function() {
-//         console.log('done');
-//     })
