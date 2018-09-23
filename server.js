@@ -95,9 +95,8 @@ process.env.NODE_ENV = 'production';
 // (async () => {
 //     const trakttv = require('./providers/trakttv.js');
 
-//     let trakttvInfo = await trakttv.fetchEpisodes('tt0977628');
+//     let trakttvInfo = await trakttv.fetchEpisodes('tt0271894');
 //     console.log(trakttvInfo);
-//     console.log(trakttvInfo[1][1]);
 // })();
 
 
@@ -116,18 +115,13 @@ process.env.NODE_ENV = 'production';
 
 
 // (async () => {
-// const imdbInfo = await app.locals.providers.imdb.fetch('tt0418279', 'movie');
+// const imdbInfo = await app.locals.providers.imdb.fetch('tt7183074', 'show');
 // console.log(imdbInfo);
 // })();
 
 // (async () => {
-//   const imdbInfo = await app.locals.providers.imdb.fetch('tt5071412', 'show');
+//   const imdbInfo = await app.locals.providers.imdb.fetch('tt1702009', 'movie');
 //   console.log(imdbInfo);
-//   for(const s in imdbInfo.episodes) {
-//     for(const ep in imdbInfo.episodes[s]) {
-//         console.log(imdbInfo.episodes[s][ep]);
-//     }
-//   }
 // })();
 
 

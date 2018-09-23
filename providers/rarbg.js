@@ -304,7 +304,7 @@ async function getReleasesFromPage(page, lastRelease) {
                     const pubdate = moment.tz(release.pubdate, 'YYYY-MM-DD HH:mm:ss', 'Europe/Sarajevo').tz('Europe/Lisbon');
 
                     // define stop point
-                    if (lastRelease && ((!lastRelease.pubdate.isDST() || pubdate.clone().add(1, 'h').isDST()) && pubdate.isSameOrBefore(lastRelease.pubdate))) {
+                    if (lastRelease && ((!moment(lastRelease.pubdate).isDST() || pubdate.clone().add(1, 'h').isDST()) && pubdate.isSameOrBefore(lastRelease.pubdate))) {
                         if (release.name === lastRelease.name || pubdate.isBefore(lastRelease.pubdate)) {
                             result.debug = 'site scraping done at ' + pubdate.format('YYYY-MM-DD HH:mm:ss');
                             result.done = true;
@@ -330,7 +330,7 @@ async function getReleasesFromPage(page, lastRelease) {
             }
         } catch (err) {
             result.successful = false;
-            result.error = err;
+            result.error = err.stack;
         }
 
         return result;

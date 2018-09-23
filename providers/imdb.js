@@ -168,7 +168,7 @@ async function fetchInfo(page, imdbId) {
             info.trailer = $('#title-overview-widget a[href^="/video/imdb/"]').attr('data-video');
         } catch (err) {
             result.successful = false;
-            result.error = err;
+            result.error = err.stack;
         }
 
         return result;
@@ -183,7 +183,7 @@ async function fetchInfo(page, imdbId) {
         }
 
         if (imdbInfo.type == 'movie') {
-            imdbInfo.akas = await fetchAKAs(page, imdbInfo);
+            imdbInfo.akas = await fetchAKAs(page, imdbInfo._id);
         } else {
             imdbInfo.episodes = await trakttv.fetchEpisodes(imdbInfo._id);
 
@@ -221,7 +221,7 @@ async function fetchAKAs(page, imdbId) {
             });
         } catch (err) {
             result.successful = false;
-            result.error = err;
+            result.error = err.stack;
         }
 
         return result;

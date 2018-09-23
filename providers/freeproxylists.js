@@ -51,7 +51,7 @@ const FreeProxyLists = {
                     });
                 } catch (err) {
                     result.successful = false;
-                    result.error = err;
+                    result.error = err.stack;
                 }
 
                 return result;

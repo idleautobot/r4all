@@ -65,8 +65,8 @@ const TraktTv = {
 
             const episodes = {};
 
-            for (let s = 0; s < res.length; s++) {
-                for (let ep = 0; ep < res[s].episodes.length; ep++) {
+            for (let s = 0; res && s < res.length; s++) {
+                for (let ep = 0; res[s].episodes && ep < res[s].episodes.length; ep++) {
                     const season = res[s].episodes[ep].season;
                     const episode = res[s].episodes[ep].number;
 
