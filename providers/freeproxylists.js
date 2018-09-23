@@ -18,7 +18,8 @@ const FreeProxyLists = {
 
         try {
             browser = await puppeteer.launch({
-                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage']
+                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
+                userDataDir: 'chromium-profile'
             });
             const page = await browser.newPage();
 

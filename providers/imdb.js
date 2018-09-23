@@ -25,7 +25,8 @@ const IMDb = {
 
         try {
             browser = await puppeteer.launch({
-                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage']
+                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
+                userDataDir: 'chromium-profile'
             });
             const page = await browser.newPage();
 
@@ -146,7 +147,7 @@ async function fetchInfo(page, imdbId) {
             if ($('#title-episode-widget').length) {
                 info.type = 'show';
                 info.year = Math.min.apply(Math, $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?year="]').map(function() { return parseInt($(this).text()) || null; }).get());
-                const seasons = $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?season="]').map(function() { return parseInt($(this).text()); }).get();
+                const seasons = $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?season="]').map(function() { return parseInt($(this).text()) || null; }).get();
                 info.numSeasons = Math.max.apply(Math, seasons);
             } else {
                 info.type = 'movie';

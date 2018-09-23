@@ -18,9 +18,17 @@ const RARBG_PAGES = {
     retry: 'retry',
     captcha: 'captcha',
     cloudflare: 'cloudflare',
+    empty: 'empty',
     banned: 'banned',
     unknown: 'unknown'
 };
+
+const RARBG_PAGES_ERROR = {
+    cloudflare: 'cloudflare protection...',
+    empty: 'page is empty...',
+    banned: 'banned...'
+};
+
 
 let status = true;
 let pageNumber = 1;
@@ -44,7 +52,8 @@ const RARBG = {
             proxy = proxy || proxies.shift();
 
             browser = await puppeteer.launch({
-                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage']
+                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
+                userDataDir: 'chromium-profile'
             });
             const page = await browser.newPage();
 
@@ -63,7 +72,7 @@ const RARBG = {
             if (browser) await browser.close();
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError' || err.name === 'CloudflareProtection') {
+            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
                 debug(err.message);
                 return await this.fetchReleases(lastRelease, null, false);
             } else {
@@ -83,7 +92,8 @@ const RARBG = {
             proxy = proxy || proxies.shift();
 
             browser = await puppeteer.launch({
-                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage']
+                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
+                userDataDir: 'chromium-profile'
             });
             const page = await browser.newPage();
 
@@ -102,7 +112,7 @@ const RARBG = {
             if (browser) await browser.close();
             proxy = proxies.shift();
 
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'BanError' || err.name === 'CloudflareProtection') {
+            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
                 debug(err.message);
                 return await this.fetchMagnet(tid);
             } else {
@@ -179,6 +189,8 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
                 pageLoaded = RARBG_PAGES.torrent;
             } else if ($('#cf-wrapper').length) {
                 pageLoaded = RARBG_PAGES.cloudflare;
+            } else if ($('body:empty').length) {
+                pageLoaded = RARBG_PAGES.empty;
             } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
                 pageLoaded = RARBG_PAGES.verifying;
             } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
@@ -197,7 +209,7 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
         case RARBG_PAGES.torrentList:
             const done = await _.bind(getReleasesFromPage, this)(page, lastRelease);
 
-            if (!done) {
+            if (false && !done) {
                 await sleep(((Math.random() * 5) + 10) * 1000);
                 pageNumber++;
                 await loadReleaseListPage(page);
@@ -232,13 +244,11 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
 
             return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
         case RARBG_PAGES.cloudflare:
-            const eCloudflare = new Error('cloudflare protection...');
-            eCloudflare.name = 'CloudflareProtection';
-            throw eCloudflare;
+        case RARBG_PAGES.empty:
         case RARBG_PAGES.banned:
-            const eBanned = new Error('banned...');
-            eBanned.name = 'BanError';
-            throw eBanned;
+            const e = new Error(RARBG_PAGES_ERROR[pageLoaded]);
+            e.name = 'KnownError';
+            throw e;
         default:
             await unknownPage(page);
             throw new Error('unknown page loaded');
@@ -293,10 +303,10 @@ async function getReleasesFromPage(page, lastRelease) {
 
                 // validation
                 if (release.name && [41, 44, 45].indexOf(release.category) !== -1 && moment(release.pubdate, 'YYYY-MM-DD HH:mm:ss').isValid()) {
-                    const pubdate = moment.tz(release.pubdate, 'YYYY-MM-DD HH:mm:ss', 'Europe/Berlin').tz('Europe/Lisbon');
+                    const pubdate = moment.tz(release.pubdate, 'YYYY-MM-DD HH:mm:ss', 'Europe/Sarajevo').tz('Europe/Lisbon');
 
                     // define stop point
-                    if (lastRelease && pubdate.isSameOrBefore(lastRelease.pubdate)) {
+                    if (lastRelease && ((!lastRelease.pubdate.isDST() || pubdate.clone().add(1, 'h').isDST()) && pubdate.isSameOrBefore(lastRelease.pubdate))) {
                         if (release.name === lastRelease.name || pubdate.isBefore(lastRelease.pubdate)) {
                             result.debug = 'site scraping done at ' + pubdate.format('YYYY-MM-DD HH:mm:ss');
                             result.done = true;
@@ -305,7 +315,7 @@ async function getReleasesFromPage(page, lastRelease) {
                     }
 
                     release._id = release.name.replace(/[^\w_]/g, '').toUpperCase();
-                    release.pubdate = pubdate.format();
+                    release.pubdate = pubdate.valueOf();
                     release.type = (release.category == 41 ? 'show' : 'movie');
                     release.quality = (release.name.indexOf('1080p') !== -1 ? '1080p' : '720p');
 
@@ -336,6 +346,7 @@ async function getReleasesFromPage(page, lastRelease) {
         const _this = this;
 
         _.forEach(result.releases, function(release) {
+            release.pubdate = new Date(release.pubdate);
             _this.newReleases[release._id] = release;
         });
 
