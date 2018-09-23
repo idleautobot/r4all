@@ -92,38 +92,6 @@ process.env.NODE_ENV = 'production';
 
 
 
-// (async () => {
-//     const trakttv = require('./providers/trakttv.js');
-
-//     let trakttvInfo = await trakttv.fetchEpisodes('tt0271894');
-//     console.log(trakttvInfo);
-// })();
-
-
-// (async () => {
-//     await app.locals.db.initialize();
-//     const doc = await app.locals.db.getIMDbOutdated();
-// console.log(doc);
-//     // if (doc) {
-//     //     const imdbInfo = await providers.imdb.fetch(doc._id, doc.type);
-//     //     imdbInfo && await db.upsertIMDb(imdbInfo);
-//     // }
-// })();
-
-
-
-
-
-// (async () => {
-// const imdbInfo = await app.locals.providers.imdb.fetch('tt7183074', 'show');
-// console.log(imdbInfo);
-// })();
-
-// (async () => {
-//   const imdbInfo = await app.locals.providers.imdb.fetch('tt1702009', 'movie');
-//   console.log(imdbInfo);
-// })();
-
 
 // return app.locals.providers.legendasdivx.fetchSubtitle('Overdrive.2017.LIMITED.720p.BluRay.x264-DRONES', 'tt1935194', true)
 //     .then(function(subtitle) {

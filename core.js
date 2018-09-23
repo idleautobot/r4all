@@ -219,7 +219,7 @@ async function upsertReleases(releases) {
 
         if (release.type == 'show' && parsed) {
             release.season = parsed.season;
-            release.episodes = parsed.episode;
+            release.episode = parsed.episode;
         }
 
         if (!release.imdbId || !parsed) {
@@ -306,7 +306,7 @@ async function verifyMovie(release) {
 
     const pubdateProperty = 'pubdate' + release.quality;
 
-    if (release.imdb == null || release.imdb[pubdateProperty] == null) {
+    if (release[pubdateProperty] == null) {
         imdbInfo[pubdateProperty] = release.pubdate;
     }
 
@@ -331,11 +331,11 @@ async function verifyShow(release) {
     const pubdateProperty = 'pubdate' + release.quality;
     let isNewEpisode;
 
-    if (release.imdb == null || release.imdb[pubdateProperty] == null) {
+    if (release[pubdateProperty] == null) {
         isNewEpisode = true;
     } else {
         const lastEpisode = await db.getLastEpisode(imdbInfo._id, release.quality);
-        isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episodes) > lastEpisode.episodes);
+        isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episode) > lastEpisode.episode);
     }
 
     if (isNewEpisode) {

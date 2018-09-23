@@ -32,12 +32,14 @@ module.exports = {
             $match: { magnet: null }
         }, {
             $sort: { pubdate: 1 }
+        }, {
+            $project: { tid: 1 }
         }]).toArrayAsync();
     },
 
     getReleasesToVerify: async function() {
         return await db.collection('releases').aggregate([{
-            $match: { magnet: { $ne: null }, isVerified: null }
+            $match: { isVerified: null, magnet: { $ne: null } }
         }, {
             $sort: { pubdate: 1 }
         }, {
@@ -52,6 +54,18 @@ module.exports = {
                 path: '$imdb',
                 preserveNullAndEmptyArrays: true
             }
+        }, {
+            $project: {
+                name: 1,
+                pubdate: 1,
+                imdbId: 1,
+                type: 1,
+                quality: 1,
+                season: 1,
+                episode: 1,
+                pubdate720p: '$imdb.pubdate720p',
+                pubdate1080p: '$imdb.pubdate1080p'
+            }
         }]).toArrayAsync();
     },
 
@@ -60,12 +74,17 @@ module.exports = {
             $match: { imdbId: imdbId, quality: quality, isVerified: true }
         }, {
             $unwind: {
-                path: '$episodes'
+                path: '$episode'
             }
         }, {
             $sort: { 'season': -1, 'episode': -1, 'pubdate': 1 }
         }, {
             $limit: 1
+        }, {
+            $project: {
+                season: 1,
+                episode: 1
+            }
         }]).toArrayAsync();
     },
 

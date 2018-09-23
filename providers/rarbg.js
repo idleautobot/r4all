@@ -207,7 +207,7 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
         case RARBG_PAGES.torrentList:
             const done = await _.bind(getReleasesFromPage, this)(page, lastRelease);
 
-            if (false && !done) {
+            if (!done) {
                 await sleep(((Math.random() * 5) + 10) * 1000);
                 pageNumber++;
                 await loadReleaseListPage(page);
