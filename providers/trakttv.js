@@ -36,13 +36,54 @@ const TraktTv = {
                 extended: 'full'
             });
 
-            const media = fetchMedia(res);
+            const media = {};
+
+            // validation
+            if ('trailer' in res) {
+                media.trailer = res.trailer;
+                media.state = res.status;
+            }
+
             if (!status) {
                 status = true;
                 debug('seems to be back');
             }
 
             return media;
+        } catch (err) {
+            status = false;
+            log.crit('[TraktTv] ' + (err.stack || err));
+
+            return null;
+        }
+    },
+    fetchEpisodes: async function(imdbId) {
+        try {
+            const res = await get('shows/' + imdbId + '/seasons', {
+                extended: 'episodes'
+            });
+
+            const episodes = {};
+
+            for (let s = 0; s < res.length; s++) {
+                for (let ep = 0; ep < res[s].episodes.length; ep++) {
+                    const season = res[s].episodes[ep].season;
+                    const episode = res[s].episodes[ep].number;
+
+                    const episodeInfo = await get('shows/' + imdbId + '/seasons/' + season + '/episodes/' + episode, {
+                        extended: 'full'
+                    });
+
+                    episodes[episodeInfo.season] = episodes[season] || {};
+                    episodes[episodeInfo.season][episodeInfo.number] = {
+                        title: episodeInfo.title,
+                        aired: new Date(episodeInfo.first_aired),
+                        overview: episodeInfo.overview
+                    };
+                }
+            }
+
+            return episodes;
         } catch (err) {
             status = false;
             log.crit('[TraktTv] ' + (err.stack || err));
@@ -57,18 +98,6 @@ const TraktTv = {
         return status;
     }
 };
-
-function fetchMedia(obj) {
-    const media = {};
-
-    // validation
-    if ('trailer' in obj) {
-        media.trailer = obj.trailer;
-        media.state = obj.status;
-    }
-
-    return media;
-}
 
 /*
  * Trakt v2

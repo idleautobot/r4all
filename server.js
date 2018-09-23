@@ -92,6 +92,14 @@ process.env.NODE_ENV = 'production';
 
 
 
+// (async () => {
+//     const trakttv = require('./providers/trakttv.js');
+
+//     let trakttvInfo = await trakttv.fetchEpisodes('tt0977628');
+//     console.log(trakttvInfo);
+//     console.log(trakttvInfo[1][1]);
+// })();
+
 
 // (async () => {
 //     await app.locals.db.initialize();
@@ -104,32 +112,6 @@ process.env.NODE_ENV = 'production';
 // })();
 
 
-// (async () => {
-// const oleoo = require('oleoo');
-
-//     let imdbInfo = await app.locals.providers.imdb.fetch('tt7158430', 'movie');
-
-//     const parsed = oleoo.parse('Hearts.Beat.Loud.2018.1080p.BluRay.X264-AMIABLE', { strict: true });
-//     let validated = false;
-// console.log(parsed);
-//     // Movie Title check
-//     const releaseTitle = parsed.title.replace(/-/g, '.').replace(/ /g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
-//     console.log(releaseTitle);
-//     let movieTitleEncoded = app.locals.common.scene.titleEncode(imdbInfo.title).toUpperCase(); // encode imdb movie title
-// console.log(movieTitleEncoded);
-//     if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare movie title
-//         validated = true;
-//     } 
-
-//     // Year && Type check
-//     validated = validated && (imdbInfo.year == parseInt(parsed.year));
-//     console.log(validated);
-//     // if (doc) {
-//     //     const imdbInfo = await providers.imdb.fetch(doc._id, doc.type);
-//     //     imdbInfo && await db.upsertIMDb(imdbInfo);
-//     // }
-// })();
-
 
 
 
@@ -139,8 +121,13 @@ process.env.NODE_ENV = 'production';
 // })();
 
 // (async () => {
-//   const imdbInfo = await app.locals.providers.imdb.fetch('tt0423776', 'show');
+//   const imdbInfo = await app.locals.providers.imdb.fetch('tt5071412', 'show');
 //   console.log(imdbInfo);
+//   for(const s in imdbInfo.episodes) {
+//     for(const ep in imdbInfo.episodes[s]) {
+//         console.log(imdbInfo.episodes[s][ep]);
+//     }
+//   }
 // })();
 
 

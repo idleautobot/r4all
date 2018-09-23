@@ -22,13 +22,11 @@ const RARBG_PAGES = {
     banned: 'banned',
     unknown: 'unknown'
 };
-
 const RARBG_PAGES_ERROR = {
     cloudflare: 'cloudflare protection...',
     empty: 'page is empty...',
     banned: 'banned...'
 };
-
 
 let status = true;
 let pageNumber = 1;
