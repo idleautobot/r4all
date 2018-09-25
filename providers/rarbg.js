@@ -29,96 +29,118 @@ const RARBG_PAGES_ERROR = {
 };
 
 let status = true;
-let pageNumber = 1;
 let proxies = [];
 let proxy = null;
 
 const RARBG = {
-    fetchReleases: async function(lastRelease, lastPage, isNewFetch = true) {
+    fetchReleases: async function(lastRelease, lastPage) {
         // init
-        if (isNewFetch) {
-            this.newReleases = {};
-            pageNumber = lastPage || 1;
-        }
+        this.newReleases = {};
+        let pageNumber = lastPage || 1;
 
+        let isInit = true;
+        let done = false;
         let browser = null;
+        let page = null;
 
-        try {
-            if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
-            if (_.isEmpty(proxies)) return false;
+        while (!done) {
+            try {
+                if (isInit) {
+                    isInit = false;
 
-            proxy = proxy || proxies.shift();
+                    if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
+                    if (_.isEmpty(proxies)) break;
 
-            browser = await puppeteer.launch({
-                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
-                userDataDir: 'chromium-profile'
-            });
-            const page = await browser.newPage();
+                    proxy = proxy || proxies.shift();
 
-            await loadReleaseListPage(page);
-            await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrentList, lastRelease);
+                    if (browser) await browser.close();
+                    browser = await puppeteer.launch({
+                        args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
+                        userDataDir: 'chromium-profile'
+                    });
+                    page = await browser.newPage();
+                }
 
-            await browser.close();
+                await loadReleaseListPage(page, pageNumber);
+                done = await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrentList, lastRelease);
 
-            if (!status) {
-                status = true;
-                debug('seems to be back');
-            }
+                pageNumber++;
 
-            return true;
-        } catch (err) {
-            if (browser) await browser.close();
-            proxy = proxies.shift();
-
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
-                debug(err.message);
-                return await this.fetchReleases(lastRelease, null, false);
-            } else {
-                status = false;
-                log.crit('[RARBG] ' + (err.stack || err));
-                return false;
+                if (done && !status) {
+                    status = true;
+                    debug('seems to be back');
+                }
+            } catch (err) {
+                if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
+                    debug(err.message);
+                    isInit = true;
+                    proxy = proxies.shift();
+                } else if (err.name === 'ReloadPage') {
+                    // do nothing
+                } else {
+                    status = false;
+                    log.crit('[RARBG] ' + (err.stack || err));
+                    break;
+                }
             }
         }
+
+        if (browser) await browser.close();
+
+        return done;
     },
     fetchMagnet: async function(tid) {
+        let isInit = true;
+        let done = false;
+        let magnet = null;
         let browser = null;
+        let page = null;
 
-        try {
-            if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
-            if (_.isEmpty(proxies)) return null;
+        while (!done) {
+            try {
+                if (isInit) {
+                    isInit = false;
 
-            proxy = proxy || proxies.shift();
+                    if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
+                    if (_.isEmpty(proxies)) break;
 
-            browser = await puppeteer.launch({
-                args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
-                userDataDir: 'chromium-profile'
-            });
-            const page = await browser.newPage();
+                    proxy = proxy || proxies.shift();
 
-            await loadTorrentPage(page, tid);
-            const magnet = await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrent, null, tid);
+                    if (browser) await browser.close();
+                    browser = await puppeteer.launch({
+                        args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
+                        userDataDir: 'chromium-profile'
+                    });
+                    page = await browser.newPage();
+                }
 
-            await browser.close();
+                await loadTorrentPage(page, tid);
+                magnet = await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrent, null, tid);
 
-            if (!status) {
-                status = true;
-                debug('seems to be back');
-            }
+                done = true;
 
-            return magnet;
-        } catch (err) {
-            if (browser) await browser.close();
-            proxy = proxies.shift();
-
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
-                debug(err.message);
-                return await this.fetchMagnet(tid);
-            } else {
-                status = false;
-                log.crit('[RARBG] ' + (err.stack || err));
-                return null;
+                if (!status) {
+                    status = true;
+                    debug('seems to be back');
+                }
+            } catch (err) {
+                if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
+                    debug(err.message);
+                    isInit = true;
+                    proxy = proxies.shift();
+                } else if (err.name === 'ReloadPage') {
+                    // do nothing
+                } else {
+                    status = false;
+                    log.crit('[RARBG] ' + (err.stack || err));
+                    break;
+                }
             }
         }
+
+        if (browser) await browser.close();
+
+        return magnet;
     },
     getURL: function() {
         return URL;
@@ -128,7 +150,7 @@ const RARBG = {
     }
 };
 
-async function loadReleaseListPage(page) {
+async function loadReleaseListPage(page, pageNumber) {
     const url = URL
         .clone()
         .segment('torrents.php')
@@ -153,20 +175,12 @@ async function loadTorrentPage(page, tid) {
 }
 
 async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt = 0) {
-    if (attempt > 1) {
-        switch (expectedPage) {
-            case RARBG_PAGES.torrentList:
-                await loadReleaseListPage(page);
-                break;
-            case RARBG_PAGES.torrent:
-                await loadTorrentPage(page, tid);
-                break;
-            default:
-                // do nothing
-                break;
-        }
+    let e;
 
-        return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
+    if (attempt > 1) {
+        e = new Error();
+        e.name = 'ReloadPage';
+        throw e;
     }
 
     const hasjQuery = await page.evaluate(() => {
@@ -207,14 +221,9 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
         case RARBG_PAGES.torrentList:
             const done = await _.bind(getReleasesFromPage, this)(page, lastRelease);
 
-            if (!done) {
-                await sleep(((Math.random() * 5) + 10) * 1000);
-                pageNumber++;
-                await loadReleaseListPage(page);
-                return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease);
-            } else {
-                return;
-            }
+            if (!done) await sleep(((Math.random() * 5) + 10) * 1000);
+
+            return done;
         case RARBG_PAGES.torrent:
             return await getTorrentMagnet(page);
         case RARBG_PAGES.verifying:
@@ -228,23 +237,13 @@ async function pageLoadedHandler(page, expectedPage, lastRelease, tid, attempt =
         case RARBG_PAGES.captcha:
             debug('solving captcha...');
             await solveCaptcha(page);
-            switch (expectedPage) {
-                case RARBG_PAGES.torrentList:
-                    await loadReleaseListPage(page);
-                    break;
-                case RARBG_PAGES.torrent:
-                    await loadTorrentPage(page, tid);
-                    break;
-                default:
-                    // do nothing
-                    break;
-            }
-
-            return await _.bind(pageLoadedHandler, this)(page, expectedPage, lastRelease, tid);
+            e = new Error();
+            e.name = 'ReloadPage';
+            throw e;
         case RARBG_PAGES.cloudflare:
         case RARBG_PAGES.empty:
         case RARBG_PAGES.banned:
-            const e = new Error(RARBG_PAGES_ERROR[pageLoaded]);
+            e = new Error(RARBG_PAGES_ERROR[pageLoaded]);
             e.name = 'KnownError';
             throw e;
         default:
