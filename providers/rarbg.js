@@ -34,60 +34,71 @@ let proxy = null;
 
 const RARBG = {
     fetchReleases: async function(lastRelease, lastPage) {
-        // init
-        this.newReleases = {};
-        let pageNumber = lastPage || 1;
+        return new Promise(function(resolve, reject) {
+            // init
+            this.newReleases = {};
+            let pageNumber = lastPage || 1;
 
-        let isInit = true;
-        let done = false;
-        let browser = null;
-        let page = null;
+            let isInit = true;
+            let done = false;
+            let browser = null;
+            let page = null;
 
-        while (!done) {
-            try {
-                if (isInit) {
-                    isInit = false;
+            while (!done) {
+                try {
+                    if (isInit) {
+                        isInit = false;
 
-                    if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
-                    if (_.isEmpty(proxies)) break;
+                        if (_.isEmpty(proxies)) proxies = await freeproxylists.fetchList();
+                        if (_.isEmpty(proxies)) break;
 
-                    proxy = proxy || proxies.shift();
+                        proxy = proxy || proxies.shift();
 
-                    if (browser) await browser.close();
-                    browser = await puppeteer.launch({
-                        args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
-                        userDataDir: 'chromium-profile'
-                    });
-                    page = await browser.newPage();
-                }
+                        if (browser) await browser.close();
+                        browser = await puppeteer.launch({
+                            args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
+                            userDataDir: 'chromium-profile'
+                        });
+                        page = await browser.newPage();
 
-                await loadReleaseListPage(page, pageNumber);
-                done = await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrentList, lastRelease);
+                        page.on('error', function(err) {
+                            await browser.close();
 
-                pageNumber++;
+                            status = false;
+                            log.crit('[RARBG] ' + (err.stack || err));
 
-                if (done && !status) {
-                    status = true;
-                    debug('seems to be back');
-                }
-            } catch (err) {
-                if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
-                    debug(err.message);
-                    isInit = true;
-                    proxy = proxies.shift();
-                } else if (err.name === 'ReloadPage') {
-                    // do nothing
-                } else {
-                    status = false;
-                    log.crit('[RARBG] ' + (err.stack || err));
-                    break;
+                            resolve(false);
+                        });
+                    }
+
+                    await loadReleaseListPage(page, pageNumber);
+                    done = await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrentList, lastRelease);
+
+                    pageNumber++;
+
+                    if (done && !status) {
+                        status = true;
+                        debug('seems to be back');
+                    }
+                } catch (err) {
+                    if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
+                        debug(err.message);
+                        isInit = true;
+                        proxy = proxies.shift();
+                    } else if (err.name === 'ReloadPage') {
+                        // do nothing
+                    } else {
+                        status = false;
+                        log.crit('[RARBG] ' + (err.stack || err));
+                        break;
+                    }
                 }
             }
-        }
 
-        if (browser) await browser.close();
+            if (browser) await browser.close();
 
-        return done;
+            resolve(done);
+        });
     },
     fetchMagnet: async function(tid) {
         let isInit = true;
