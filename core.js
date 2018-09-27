@@ -167,9 +167,6 @@ async function fetchReleases() {
     debug('fetching new releases...');
 
     const rarbg = providers.rarbg;
-    const result = {
-        releases: []
-    };
 
     let [bootstrap, lastRelease] = await Promise.all([
         db.getBootstrap(),
@@ -185,16 +182,16 @@ async function fetchReleases() {
         bootstrap.lastPage = bootstrap.lastPage || 1;
     }
 
-    const success = await rarbg.fetchReleases(lastRelease, bootstrap.lastPage);
+    const result = await rarbg.fetchReleases(lastRelease, bootstrap.lastPage);
 
-    if (_.isEmpty(rarbg.newReleases) || (!success && bootstrap.done)) {
-        // do nothing
+    if (_.isEmpty(result.releases) || (!result.success && bootstrap.done)) {
+        result.releases = null;
     } else {
-        result.releases = _.sortBy(rarbg.newReleases, 'pubdate');
+        result.releases = _.sortBy(result.releases, 'pubdate');
 
         if (!bootstrap.done) {
             result.bootstrap = {
-                done: success,
+                done: result.success,
                 lastPage: _.max([bootstrap.lastPage, _.maxBy(result.releases, 'page').page])
             };
         }
