@@ -79,6 +79,7 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
                 page.on('error', async function(err) {
                     await browser.close();
 
+                    debug(err.message);
                     fetchReleases(resolve, lastRelease, pageNumber, releases);
                 });
             }
@@ -139,6 +140,7 @@ async function fetchMagnet(resolve, tid) {
                 page.on('error', async function(err) {
                     await browser.close();
 
+                    debug(err.message);
                     fetchMagnet(resolve, tid);
                 });
             }
@@ -213,7 +215,7 @@ async function pageLoadedHandler(page, expectedPage, io, attempt = 0) {
 
             if (!done) await sleep(((Math.random() * 5) + 10) * 1000);
 
-            return true;
+            return done;
         case RARBG_PAGES.torrent:
             return await getTorrentMagnet(page);
         case RARBG_PAGES.verifying:
