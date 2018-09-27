@@ -34,9 +34,11 @@ let proxy = null;
 
 const RARBG = {
     fetchReleases: async function(lastRelease, lastPage) {
-        return new Promise(function(resolve, reject) {
+        const _this = this;
+        
+        return new Promise(async function(resolve, reject) {
             // init
-            this.newReleases = {};
+            _this.newReleases = {};
             let pageNumber = lastPage || 1;
 
             let isInit = true;
@@ -61,7 +63,7 @@ const RARBG = {
                         });
                         page = await browser.newPage();
 
-                        page.on('error', function(err) {
+                        page.on('error', async function(err) {
                             await browser.close();
 
                             status = false;
@@ -72,7 +74,7 @@ const RARBG = {
                     }
 
                     await loadReleaseListPage(page, pageNumber);
-                    done = await _.bind(pageLoadedHandler, this)(page, RARBG_PAGES.torrentList, lastRelease);
+                    done = await _.bind(pageLoadedHandler, _this)(page, RARBG_PAGES.torrentList, lastRelease);
 
                     pageNumber++;
 
