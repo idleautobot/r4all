@@ -91,6 +91,32 @@ process.env.NODE_ENV = 'production';
 })(process.env.NODE_ENV === 'production');
 
 
+// (async function() {
+//     const puppeteer = require('puppeteer');
+
+//     try {
+//         const browser = await puppeteer.launch();
+//         const page = await browser.newPage();
+
+//         page.on('error', async function(err) {
+//             console.log('PageOnError: caught!');
+//         });
+
+//         page.on('pageerror', async function(err) {
+//             console.log('pageerror: caught!');
+//         });
+
+//         await page.goto('http://www.google.com');
+
+//         await page.setDefaultNavigationTimeout(1);
+
+//         const navigationPromise = page.waitForNavigation();
+//         await page.click('input[name="btnK"]');
+//         await navigationPromise;
+//     } catch (err) {
+//         console.log('OnError: caught!');
+//     }
+// })();
 
 
 // return app.locals.providers.legendasdivx.fetchSubtitle('Overdrive.2017.LIMITED.720p.BluRay.x264-DRONES', 'tt1935194', true)

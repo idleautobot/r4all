@@ -5,6 +5,7 @@ const _ = require('lodash');
 const URI = require('urijs');
 const URITemplate = require('urijs/src/URITemplate');
 const puppeteer = require('puppeteer');
+const { TimeoutError } = require('puppeteer/Errors');
 
 const log = require('../logger.js');
 const freeproxylists = require('./freeproxylists.js');
@@ -69,7 +70,8 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
 
                 proxy = proxy || proxies.shift();
 
-                if (browser) await browser.close();
+                try { await browser.close(); } catch (err) {};
+
                 browser = await puppeteer.launch({
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
                     userDataDir: 'chromium-profile'
@@ -79,8 +81,8 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
                 page.on('error', async function(err) {
                     await browser.close();
 
-                    debug(err.message);
-                    fetchReleases(resolve, lastRelease, pageNumber, releases);
+                    debug('PageOnError: ' + err.message);
+                    await fetchReleases(resolve, lastRelease, pageNumber, releases);
                 });
             }
 
@@ -94,7 +96,7 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
                 debug('seems to be back');
             }
         } catch (err) {
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
+            if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
                 debug(err.message);
                 isInit = true;
                 proxy = proxies.shift();
@@ -108,7 +110,7 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
         }
     }
 
-    if (browser) await browser.close();
+    try { await browser.close(); } catch (err) {};
 
     resolve({ success: done, releases: releases });
 }
@@ -130,7 +132,8 @@ async function fetchMagnet(resolve, tid) {
 
                 proxy = proxy || proxies.shift();
 
-                if (browser) await browser.close();
+                try { await browser.close(); } catch (err) {};
+
                 browser = await puppeteer.launch({
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
                     userDataDir: 'chromium-profile'
@@ -140,8 +143,8 @@ async function fetchMagnet(resolve, tid) {
                 page.on('error', async function(err) {
                     await browser.close();
 
-                    debug(err.message);
-                    fetchMagnet(resolve, tid);
+                    debug('PageOnError: ' + err.message);
+                    await fetchMagnet(resolve, tid);
                 });
             }
 
@@ -155,7 +158,7 @@ async function fetchMagnet(resolve, tid) {
                 debug('seems to be back');
             }
         } catch (err) {
-            if (err.message.startsWith('net::ERR') || err.name === 'TimeoutError' || err.name === 'KnownError') {
+            if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
                 debug(err.message);
                 isInit = true;
                 proxy = proxies.shift();
@@ -169,7 +172,7 @@ async function fetchMagnet(resolve, tid) {
         }
     }
 
-    if (browser) await browser.close();
+    try { await browser.close(); } catch (err) {};
 
     resolve(magnet);
 }
@@ -220,7 +223,7 @@ async function pageLoadedHandler(page, expectedPage, io, attempt = 0) {
             return await getTorrentMagnet(page);
         case RARBG_PAGES.verifying:
             debug('verifying the browser...');
-            await page.waitForNavigation()
+            await page.waitForNavigation();
             return await pageLoadedHandler(page, expectedPage, io, ++attempt);
         case RARBG_PAGES.retry:
             debug('retry verifying the browser...');
