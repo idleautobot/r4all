@@ -185,7 +185,7 @@ async function fetchReleases() {
     const result = await rarbg.fetchReleases(lastRelease, bootstrap.lastPage);
 
     if (_.isEmpty(result.releases) || (!result.success && bootstrap.done)) {
-        result.releases = null;
+        result.releases = [];
     } else {
         result.releases = _.sortBy(result.releases, 'pubdate');
 

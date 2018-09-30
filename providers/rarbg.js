@@ -82,7 +82,7 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
                     try { await browser.close(); } catch (err) {};
 
                     debug('PageOnError: ' + err.message);
-                    await fetchReleases(resolve, lastRelease, pageNumber, releases);
+                    resolve({ success: false, releases: releases });
                 });
             }
 
@@ -144,7 +144,7 @@ async function fetchMagnet(resolve, tid) {
                     try { await browser.close(); } catch (err) {};
 
                     debug('PageOnError: ' + err.message);
-                    await fetchMagnet(resolve, tid);
+                    resolve(null);
                 });
             }
 
