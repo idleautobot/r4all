@@ -36,12 +36,12 @@ let proxy = null;
 const RARBG = {
     fetchReleases: async function(lastRelease, lastPage) {
         return new Promise(async function(resolve, reject) {
-            fetchReleases(resolve, lastRelease, lastPage);
+            await fetchReleases(resolve, lastRelease, lastPage);
         });
     },
     fetchMagnet: async function(tid) {
         return new Promise(async function(resolve, reject) {
-            fetchMagnet(resolve, tid);
+            await fetchMagnet(resolve, tid);
         });
     },
     getURL: function() {
@@ -79,7 +79,7 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
                 page = await browser.newPage();
 
                 page.on('error', async function(err) {
-                    await browser.close();
+                    try { await browser.close(); } catch (err) {};
 
                     debug('PageOnError: ' + err.message);
                     await fetchReleases(resolve, lastRelease, pageNumber, releases);
@@ -141,7 +141,7 @@ async function fetchMagnet(resolve, tid) {
                 page = await browser.newPage();
 
                 page.on('error', async function(err) {
-                    await browser.close();
+                    try { await browser.close(); } catch (err) {};
 
                     debug('PageOnError: ' + err.message);
                     await fetchMagnet(resolve, tid);
@@ -397,52 +397,64 @@ async function getTorrentMagnet(page) {
 async function solveCaptcha(page) {
     await page.addScriptTag({ path: 'providers/gocr.js' });
 
-    const navigationPromise = page.waitForNavigation();
+    await new Promise(async function(resolve, reject) {
+        try {
+            const navigationPromise = page.waitForNavigation().catch(reject);
 
-    await page.evaluate(() => {
-        var img = $('img[src^="/threat_captcha.php"]')[0];
+            await page.evaluate(() => {
+                var img = $('img[src^="/threat_captcha.php"]')[0];
 
-        var canvas = document.createElement('canvas');
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
 
-        var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        var d = pixels.data;
+                var d = pixels.data;
 
-        for (var i = 0; i < d.length; i += 4) {
-            var r = d[i];
-            var g = d[i + 1];
-            var b = d[i + 2];
-            var v = 0;
+                for (var i = 0; i < d.length; i += 4) {
+                    var r = d[i];
+                    var g = d[i + 1];
+                    var b = d[i + 2];
+                    var v = 0;
 
-            //Extract only gray pixels
-            //Filter darker pixels (<100)
-            var diff = Math.abs(r - g) + Math.abs(r - b) + Math.abs(g - b);
-            var isGray = diff <= 30 && r > 100;
+                    //Extract only gray pixels
+                    //Filter darker pixels (<100)
+                    var diff = Math.abs(r - g) + Math.abs(r - b) + Math.abs(g - b);
+                    var isGray = diff <= 30 && r > 100;
 
-            var color = isGray ? 255 : 0;
-            d[i] = d[i + 1] = d[i + 2] = color;
+                    var color = isGray ? 255 : 0;
+                    d[i] = d[i + 1] = d[i + 2] = color;
+                }
+
+                ctx.putImageData(pixels, 0, 0);
+
+                //GOCR is a library for OCR
+                //In this simple captchas it is enough
+                var captcha = GOCR(canvas);
+                captcha = captcha.replace(/[\W_]/g, '');
+
+                $('#solve_string').val(captcha);
+                $('form').submit();
+            });
+
+            await navigationPromise.then(resolve);
+        } catch (err) {
+            reject(err);
         }
-
-        ctx.putImageData(pixels, 0, 0);
-
-        //GOCR is a library for OCR
-        //In this simple captchas it is enough
-        var captcha = GOCR(canvas);
-        captcha = captcha.replace(/[\W_]/g, '');
-
-        $('#solve_string').val(captcha);
-        $('form').submit();
     });
-
-    await navigationPromise;
 }
 
 async function verifyBrowser(page) {
-    const navigationPromise = page.waitForNavigation();
-    await page.click('a[href="/threat_defence.php?defence=1"]');
-    await navigationPromise;
+    await new Promise(async function(resolve, reject) {
+        try {
+            const navigationPromise = page.waitForNavigation().catch(reject);
+            await page.click('a[href="/threat_defence.php?defence=1"]');
+            await navigationPromise.then(resolve);
+        } catch (err) {
+            reject(err);
+        }
+    });
 }
 
 async function unknownPage(page) {

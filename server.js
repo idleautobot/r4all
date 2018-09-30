@@ -102,17 +102,18 @@ process.env.NODE_ENV = 'production';
 //             console.log('PageOnError: caught!');
 //         });
 
-//         page.on('pageerror', async function(err) {
-//             console.log('pageerror: caught!');
-//         });
-
 //         await page.goto('http://www.google.com');
 
-//         await page.setDefaultNavigationTimeout(1);
-
-//         const navigationPromise = page.waitForNavigation();
-//         await page.click('input[name="btnK"]');
-//         await navigationPromise;
+//         await new Promise(async function(resolve, reject) {
+//             try {
+//                 await page.setDefaultNavigationTimeout(1);
+//                 const navigationPromise = page.waitForNavigation().catch(reject);
+//                 await page.click('input[name="btnI"]');
+//                 await navigationPromise.then(resolve);
+//             } catch (err) {
+//                 reject(err);
+//             }
+//         });
 //     } catch (err) {
 //         console.log('OnError: caught!');
 //     }
