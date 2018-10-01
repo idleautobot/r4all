@@ -205,6 +205,8 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
 
     try { await browser.close(); } catch (err) {};
 
+    delete runs[currRun];
+
     resolve(magnet);
 }
 
