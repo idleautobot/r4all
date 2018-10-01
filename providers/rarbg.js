@@ -30,29 +30,32 @@ const RARBG_PAGES_ERROR = {
 };
 
 let status = true;
+let runCounter = 0;
+let runs = {};
 let proxies = [];
 let proxy = null;
 
 const RARBG = {
     fetchReleases: async function(lastRelease, lastPage) {
-        return new Promise(async function(resolve, reject) {
-            await fetchReleases(resolve, lastRelease, lastPage);
-        });
-    },
-    fetchMagnet: async function(tid) {
-        return new Promise(async function(resolve, reject) {
-            await fetchMagnet(resolve, tid);
-        });
-    },
-    getURL: function() {
-        return URL;
-    },
-    isOn: function() {
-        return status;
-    }
+            return new Promise(async function(resolve, reject) {
+                await fetchReleases(++runCounter, resolve, lastRelease, lastPage);
+            });
+        },
+        fetchMagnet: async function(tid) {
+                return new Promise(async function(resolve, reject) {
+                    await fetchMagnet(++runCounter, resolve, tid);
+                });
+            },
+            getURL: function() {
+                return URL;
+            },
+            isOn: function() {
+                return status;
+            }
 };
 
-async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
+async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases = {}, instance = 0) {
+    runs[currRun] = instance;
     pageNumber = pageNumber || 1;
 
     let isInit = true;
@@ -76,13 +79,20 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
                     userDataDir: 'chromium-profile'
                 });
+
+                runs[currRun] = ++instance;
+
                 page = await browser.newPage();
 
                 page.on('error', async function(err) {
-                    try { await browser.close(); } catch (err) {};
+                    if (instance === runs[currRun]) {
+                        try { await browser.close(); } catch (err) {};
 
-                    debug('PageOnError: ' + err.message);
-                    resolve({ success: false, releases: releases });
+                        debug('PageOnError: ' + err.message);
+                        await fetchReleases(currRun, resolve, lastRelease, pageNumber, releases, instance);
+                    } else {
+                        debug('Unexpected PageOnError from instance ' + instance + ' whilst on ' + runs[currRun] + ' instance: ' + err.message);
+                    }
                 });
             }
 
@@ -96,26 +106,35 @@ async function fetchReleases(resolve, lastRelease, pageNumber, releases = {}) {
                 debug('seems to be back');
             }
         } catch (err) {
-            if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
-                debug(err.message);
-                isInit = true;
-                proxy = proxies.shift();
-            } else if (err.name === 'ReloadPage') {
-                // do nothing
+            if (instance === runs[currRun]) {
+                if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
+                    debug(err.message);
+                    isInit = true;
+                    proxy = proxies.shift();
+                } else if (err.name === 'ReloadPage') {
+                    // do nothing
+                } else {
+                    status = false;
+                    log.crit('[RARBG] ' + (err.stack || err));
+                    break;
+                }
             } else {
-                status = false;
-                log.crit('[RARBG] ' + (err.stack || err));
-                break;
+                debug('Unexpected OnError from instance ' + instance + ' whilst on ' + runs[currRun] + ' instance: ' + err.message);
+                return;
             }
         }
     }
 
     try { await browser.close(); } catch (err) {};
 
+    delete runs[currRun];
+
     resolve({ success: done, releases: releases });
 }
 
-async function fetchMagnet(resolve, tid) {
+async function fetchMagnet(currRun, resolve, tid, instance = 0) {
+    runs[currRun] = instance;
+
     let isInit = true;
     let done = false;
     let browser = null;
@@ -138,13 +157,20 @@ async function fetchMagnet(resolve, tid) {
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
                     userDataDir: 'chromium-profile'
                 });
+
+                runs[currRun] = ++instance;
+
                 page = await browser.newPage();
 
                 page.on('error', async function(err) {
-                    try { await browser.close(); } catch (err) {};
+                    if (instance === runs[currRun]) {
+                        try { await browser.close(); } catch (err) {};
 
-                    debug('PageOnError: ' + err.message);
-                    resolve(null);
+                        debug('PageOnError: ' + err.message);
+                        await fetchMagnet(currRun, resolve, tid, instance);
+                    } else {
+                        debug('Unexpected PageOnError from instance ' + instance + ' whilst on ' + runs[currRun] + ' instance: ' + err.message);
+                    }
                 });
             }
 
@@ -158,16 +184,21 @@ async function fetchMagnet(resolve, tid) {
                 debug('seems to be back');
             }
         } catch (err) {
-            if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
-                debug(err.message);
-                isInit = true;
-                proxy = proxies.shift();
-            } else if (err.name === 'ReloadPage') {
-                // do nothing
+            if (instance === runs[currRun]) {
+                if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
+                    debug(err.message);
+                    isInit = true;
+                    proxy = proxies.shift();
+                } else if (err.name === 'ReloadPage') {
+                    // do nothing
+                } else {
+                    status = false;
+                    log.crit('[RARBG] ' + (err.stack || err));
+                    break;
+                }
             } else {
-                status = false;
-                log.crit('[RARBG] ' + (err.stack || err));
-                break;
+                debug('Unexpected OnError from instance ' + instance + ' whilst on ' + runs[currRun] + ' instance: ' + err.message);
+                return;
             }
         }
     }

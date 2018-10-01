@@ -90,32 +90,31 @@ process.env.NODE_ENV = 'production';
         });
 })(process.env.NODE_ENV === 'production');
 
+// const puppeteer = require('puppeteer');
 
-// (async function() {
-//     const puppeteer = require('puppeteer');
+// (async function launch(instance = 0) {
+//     let browser = null;
+//     let page = null;
 
 //     try {
-//         const browser = await puppeteer.launch();
-//         const page = await browser.newPage();
+//         browser = await puppeteer.launch();
+//         page = await browser.newPage();
 
 //         page.on('error', async function(err) {
-//             console.log('PageOnError: caught!');
+//             console.log('[' + instance + '] PageOnError: caught!');
 //         });
+
+//         page.on('load', async function(err) {
+//             console.log('[' + instance + '] loaded');
+//             try { await browser.close(); } catch (err) {};
+//             await launch(++instance);
+//         });
+
+//         console.log('[' + instance + '] loading...');
 
 //         await page.goto('http://www.google.com');
-
-//         await new Promise(async function(resolve, reject) {
-//             try {
-//                 await page.setDefaultNavigationTimeout(1);
-//                 const navigationPromise = page.waitForNavigation().catch(reject);
-//                 await page.click('input[name="btnI"]');
-//                 await navigationPromise.then(resolve);
-//             } catch (err) {
-//                 reject(err);
-//             }
-//         });
 //     } catch (err) {
-//         console.log('OnError: caught!');
+//         console.log('[' + instance + '] OnError: caught!', err);
 //     }
 // })();
 
