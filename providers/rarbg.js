@@ -96,7 +96,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                 });
             }
 
-            await loadReleaseListPage(page, pageNumber, instance);
+            await loadReleaseListPage(page, pageNumber, currRun, instance);
             done = await pageLoadedHandler(page, RARBG_PAGES.torrentList, { lastRelease: lastRelease, releases: releases });
 
             pageNumber++;
@@ -174,7 +174,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
                 });
             }
 
-            await loadTorrentPage(page, tid, instance);
+            await loadTorrentPage(page, tid, currRun, instance);
             magnet = await pageLoadedHandler(page, RARBG_PAGES.torrent);
 
             done = true;
@@ -210,25 +210,25 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
     resolve(magnet);
 }
 
-async function loadReleaseListPage(page, pageNumber, instance) {
+async function loadReleaseListPage(page, pageNumber, currRun, instance) {
     const url = URL
         .clone()
         .segment('torrents.php')
         .addQuery({ category: '41;44;45', page: pageNumber })
         .toString();
 
-    debug('[' + instance + ']' + url + ' @' + proxy);
+    debug('[' + runs[currRun] + ':' + instance + '] ' + url + ' @' + proxy);
 
     await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
 }
 
-async function loadTorrentPage(page, tid, instance) {
+async function loadTorrentPage(page, tid, currRun, instance) {
     const url = TORRENT_URL
         .expand({ tid: tid })
         .toString();
 
-    debug('[' + instance + ']' + url + ' @' + proxy);
+   debug('[' + runs[currRun] + ':' + instance + '] ' + url + ' @' + proxy);
 
     await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
