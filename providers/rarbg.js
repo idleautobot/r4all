@@ -73,6 +73,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
 
                 proxy = proxy || proxies.shift();
 
+                try { await page.close(); } catch (err) {};
                 try { await browser.close(); } catch (err) {};
 
                 browser = await puppeteer.launch({
@@ -86,6 +87,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
 
                 page.on('error', async function(err) {
                     if (instance === runs[currRun]) {
+                        try { await page.close(); } catch (err) {};
                         try { await browser.close(); } catch (err) {};
 
                         debug('PageOnError: ' + err.message);
@@ -125,6 +127,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
         }
     }
 
+    try { await page.close(); } catch (err) {};
     try { await browser.close(); } catch (err) {};
 
     delete runs[currRun];
@@ -151,6 +154,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
 
                 proxy = proxy || proxies.shift();
 
+                try { await page.close(); } catch (err) {};
                 try { await browser.close(); } catch (err) {};
 
                 browser = await puppeteer.launch({
@@ -164,6 +168,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
 
                 page.on('error', async function(err) {
                     if (instance === runs[currRun]) {
+                        try { await page.close(); } catch (err) {};
                         try { await browser.close(); } catch (err) {};
 
                         debug('PageOnError: ' + err.message);
@@ -203,6 +208,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
         }
     }
 
+    try { await page.close(); } catch (err) {};
     try { await browser.close(); } catch (err) {};
 
     delete runs[currRun];
@@ -217,7 +223,7 @@ async function loadReleaseListPage(page, pageNumber, currRun, instance) {
         .addQuery({ category: '41;44;45', page: pageNumber })
         .toString();
 
-    debug('[' + runs[currRun] + ':' + instance + '] ' + url + ' @' + proxy);
+    debug('[' + currRun + ':' + instance + '] ' + url + ' @' + proxy);
 
     await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
@@ -228,7 +234,7 @@ async function loadTorrentPage(page, tid, currRun, instance) {
         .expand({ tid: tid })
         .toString();
 
-   debug('[' + runs[currRun] + ':' + instance + '] ' + url + ' @' + proxy);
+   debug('[' + currRun + ':' + instance + '] ' + url + ' @' + proxy);
 
     await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
