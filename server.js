@@ -74,49 +74,49 @@ function memoryUsage() {
 
 process.env.NODE_ENV = 'production';
 
-// (function initApp(isProduction) {
-//     app.locals.db.initialize()
-//         .then(function() {
-//             return isProduction && memoryUsage();
-//         })
-//         .then(function() {
-//             http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
-//                 debug('express server listening on port ' + app.get('port'));
-//                 return (isProduction && app.locals.core.refresh());
-//             });
-//         })
-//         .catch(function(err) {
-//             console.log(err);
+(function initApp(isProduction) {
+    app.locals.db.initialize()
+        .then(function() {
+            return isProduction && memoryUsage();
+        })
+        .then(function() {
+            http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
+                debug('express server listening on port ' + app.get('port'));
+                return (isProduction && app.locals.core.refresh());
+            });
+        })
+        .catch(function(err) {
+            console.log(err);
+        });
+})(process.env.NODE_ENV === 'production');
+
+// const puppeteer = require('puppeteer');
+
+// (async function launch(instance = 0) {
+//     let browser = null;
+//     let page = null;
+
+//     try {
+//         browser = await puppeteer.launch();
+//         page = await browser.newPage();
+
+//         page.on('error', async function(err) {
+//             console.log('[' + instance + '] PageOnError: caught!');
 //         });
-// })(process.env.NODE_ENV === 'production');
 
-const puppeteer = require('puppeteer');
+//         page.on('load', async function(err) {
+//             console.log('[' + instance + '] loaded');
+//             try { await page.close(); await browser.close(); } catch (err) {};
+//             await launch(++instance);
+//         });
 
-(async function launch(instance = 0) {
-    let browser = null;
-    let page = null;
+//         console.log('[' + instance + '] loading...');
 
-    try {
-        browser = await puppeteer.launch();
-        page = await browser.newPage();
-
-        page.on('error', async function(err) {
-            console.log('[' + instance + '] PageOnError: caught!');
-        });
-
-        page.on('load', async function(err) {
-            console.log('[' + instance + '] loaded');
-            try { await page.close(); await browser.close(); } catch (err) {};
-            await launch(++instance);
-        });
-
-        console.log('[' + instance + '] loading...');
-
-        await page.goto('http://www.google.com');
-    } catch (err) {
-        console.log('[' + instance + '] OnError: caught!', err);
-    }
-})();
+//         await page.goto('http://www.google.com');
+//     } catch (err) {
+//         console.log('[' + instance + '] OnError: caught!', err);
+//     }
+// })();
 
 
 // return app.locals.providers.legendasdivx.fetchSubtitle('Overdrive.2017.LIMITED.720p.BluRay.x264-DRONES', 'tt1935194', true)
