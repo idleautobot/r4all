@@ -128,7 +128,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
             }
         }
 
-        isInit = true;
+        //isInit = true;
     }
 
     //try { await page.close(); } catch (err) {};
