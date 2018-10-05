@@ -105,14 +105,54 @@ process.env.NODE_ENV = 'production';
 //         });
 
 //         page.on('load', async function(err) {
+//             //console.log(browser.process().pid);
 //             console.log('[' + instance + '] loaded');
-//             try { await page.close(); await browser.close(); } catch (err) {};
-//             await launch(++instance);
+//             return setTimeout(async function(){
+//                 try { await browser.close(); } catch (err) {};
+//                 await launch(++instance);                
+//             }, 5000);
 //         });
 
 //         console.log('[' + instance + '] loading...');
 
 //         await page.goto('http://www.google.com');
+//     } catch (err) {
+//         console.log('[' + instance + '] OnError: caught!', err);
+//     }
+// })();
+
+// const puppeteer = require('puppeteer');
+
+// function sleep(ms = 0) {
+//     return new Promise(r => setTimeout(r, ms));
+// }
+
+// (async function launch(instance = 0) {
+//     let browser = null;
+//     let page = null;
+
+//     try {
+//         if(instance < 100) {
+//             browser = await puppeteer.launch();
+//             page = await browser.newPage();
+
+//             page.on('error', async function(err) {
+//                 console.log('[' + instance + '] PageOnError: caught!');
+//             });
+
+//             page.on('load', async function(err) {
+//                 console.log('[' + instance + '] loaded');
+//                 try { await page.close(); } catch (err) { console.log(err); };
+//                 try { await browser.close(); } catch (err) { console.log(err); };
+//                 await launch(++instance);
+//             });
+
+//             console.log('[' + instance + '] loading...');
+
+//             await page.goto('http://www.google.com');            
+//         } else {
+//             await sleep(5*60*1000);
+//         }
 //     } catch (err) {
 //         console.log('[' + instance + '] OnError: caught!', err);
 //     }

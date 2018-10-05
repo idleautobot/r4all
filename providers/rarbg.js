@@ -73,7 +73,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
 
                 proxy = proxy || proxies.shift();
 
-                try { await page.close(); } catch (err) {};
+                //try { await page.close(); } catch (err) {};
                 try { await browser.close(); } catch (err) {};
 
                 browser = await puppeteer.launch({
@@ -87,11 +87,13 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
 
                 page.on('error', async function(err) {
                     if (instance === runs[currRun]) {
-                        try { await page.close(); } catch (err) {};
-                        try { await browser.close(); } catch (err) {};
-
                         debug('PageOnError: ' + err.message);
-                        await fetchReleases(currRun, resolve, lastRelease, pageNumber, releases, instance);
+
+                        setTimeout(async function() {
+                            //try { await page.close(); } catch (err) {};
+                            try { await browser.close(); } catch (err) {};
+                            await fetchReleases(currRun, resolve, lastRelease, pageNumber, releases, instance);
+                        }, 5000);
                     } else {
                         debug('Unexpected PageOnError from instance ' + instance + ' whilst on ' + runs[currRun] + ' instance: ' + err.message);
                     }
@@ -127,7 +129,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
         }
     }
 
-    try { await page.close(); } catch (err) {};
+    //try { await page.close(); } catch (err) {};
     try { await browser.close(); } catch (err) {};
 
     delete runs[currRun];
@@ -154,7 +156,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
 
                 proxy = proxy || proxies.shift();
 
-                try { await page.close(); } catch (err) {};
+                //try { await page.close(); } catch (err) {};
                 try { await browser.close(); } catch (err) {};
 
                 browser = await puppeteer.launch({
@@ -168,11 +170,13 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
 
                 page.on('error', async function(err) {
                     if (instance === runs[currRun]) {
-                        try { await page.close(); } catch (err) {};
-                        try { await browser.close(); } catch (err) {};
-
                         debug('PageOnError: ' + err.message);
-                        await fetchMagnet(currRun, resolve, tid, instance);
+
+                        setTimeout(async function() {
+                            //try { await page.close(); } catch (err) {};
+                            try { await browser.close(); } catch (err) {};
+                            await fetchMagnet(currRun, resolve, tid, instance);
+                        }, 5000);
                     } else {
                         debug('Unexpected PageOnError from instance ' + instance + ' whilst on ' + runs[currRun] + ' instance: ' + err.message);
                     }
@@ -208,7 +212,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
         }
     }
 
-    try { await page.close(); } catch (err) {};
+    //try { await page.close(); } catch (err) {};
     try { await browser.close(); } catch (err) {};
 
     delete runs[currRun];
@@ -234,7 +238,7 @@ async function loadTorrentPage(page, tid, currRun, instance) {
         .expand({ tid: tid })
         .toString();
 
-   debug('[' + currRun + ':' + instance + '] ' + url + ' @' + proxy);
+    debug('[' + currRun + ':' + instance + '] ' + url + ' @' + proxy);
 
     await page.setDefaultNavigationTimeout(60 * 1000);
     await page.goto(url);
