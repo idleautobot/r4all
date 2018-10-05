@@ -127,6 +127,8 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                 return;
             }
         }
+
+        isInit = true;
     }
 
     //try { await page.close(); } catch (err) {};
@@ -210,6 +212,8 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
                 return;
             }
         }
+
+        isInit = true;
     }
 
     //try { await page.close(); } catch (err) {};

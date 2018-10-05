@@ -91,11 +91,28 @@ process.env.NODE_ENV = 'production';
 })(process.env.NODE_ENV === 'production');
 
 // const puppeteer = require('puppeteer');
+// const events = require('events');
+
+// var eventEmitter = new events.EventEmitter();
+
+// function sleep(ms = 0) {
+//     return new Promise(r => setTimeout(r, ms));
+// }
+
+// // listener #1
+// var listner1 = async function listner1(browser, launch, instance) {
+//     await sleep(1000);
+//     await browser.close();
+//     await launch(++instance);
+// }
+
+// // Bind the connection event with the listner1 function
+// eventEmitter.addListener('connection', listner1);
 
 // (async function launch(instance = 0) {
 //     let browser = null;
 //     let page = null;
-
+// await sleep(1000);
 //     try {
 //         browser = await puppeteer.launch();
 //         page = await browser.newPage();
@@ -105,12 +122,9 @@ process.env.NODE_ENV = 'production';
 //         });
 
 //         page.on('load', async function(err) {
-//             //console.log(browser.process().pid);
 //             console.log('[' + instance + '] loaded');
-//             return setTimeout(async function(){
-//                 try { await browser.close(); } catch (err) {};
-//                 await launch(++instance);                
-//             }, 5000);
+//             await browser.close();
+//             await launch(++instance);
 //         });
 
 //         console.log('[' + instance + '] loading...');
@@ -118,6 +132,7 @@ process.env.NODE_ENV = 'production';
 //         await page.goto('http://www.google.com');
 //     } catch (err) {
 //         console.log('[' + instance + '] OnError: caught!', err);
+//         console.log(err.stack);
 //     }
 // })();
 
