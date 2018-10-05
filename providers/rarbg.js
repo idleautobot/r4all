@@ -213,7 +213,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
             }
         }
 
-        isInit = true;
+        //isInit = true;
     }
 
     //try { await page.close(); } catch (err) {};
@@ -263,7 +263,7 @@ async function pageLoadedHandler(page, expectedPage, io, attempt = 0) {
         case RARBG_PAGES.torrentList:
             const done = await getReleasesFromPage(page, io);
 
-            if (!done) await sleep(((Math.random() * 5) + 10) * 1000);
+            //if (!done) await sleep(((Math.random() * 5) + 10) * 1000);
 
             return done;
         case RARBG_PAGES.torrent:
