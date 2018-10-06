@@ -13,7 +13,6 @@ const log = require('../logger.js');
 
 const URL = URI('https://www.imdb.com');
 const TITLE_URL = URITemplate(URL.toString() + 'title/{imdbId}/');
-const SEASON_URL = URITemplate(URL.toString() + 'title/{imdbId}/episodes?season={season}');
 const AKAS_URL = URITemplate(URL.toString() + 'title/{imdbId}/releaseinfo');
 const TRAILER_URL = URITemplate(URL.toString() + 'video/imdb/{trailerId}/imdb/embed?autoplay=true&format=720p');
 
@@ -21,85 +20,86 @@ let status = true;
 
 const IMDb = {
     fetch: async function(imdbId, type) {
-        let browser = null;
+            let browser = null;
 
-        try {
-            browser = await puppeteer.launch({
-                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
-                userDataDir: 'chromium-profile'
-            });
-            const page = await browser.newPage();
+            try {
+                browser = await puppeteer.launch({
+                    args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
+                    userDataDir: 'chromium-profile'
+                });
 
-            let imdbInfo = fetchInfo(page, imdbId);
-            let mdbInfo = mdb.fetch(imdbId, type);
-            let trakttvInfo = trakttv.fetch(imdbId, type);
+                const page = await browser.newPage();
 
-            [imdbInfo, mdbInfo, trakttvInfo] = [await imdbInfo, await mdbInfo, await trakttvInfo];
+                let imdbInfo = fetchInfo(page, imdbId);
+                let mdbInfo = mdb.fetch(imdbId, type);
+                let trakttvInfo = trakttv.fetch(imdbId, type);
 
-            if (!imdbInfo) return;
+                [imdbInfo, mdbInfo, trakttvInfo] = [await imdbInfo, await mdbInfo, await trakttvInfo];
 
-            imdbInfo.trailer = imdbInfo.trailer && TRAILER_URL
-                .expand({ trailerId: imdbInfo.trailer })
-                .toString();
+                if (!imdbInfo) return;
 
-            // mdbInfo
-            if (mdbInfo) {
-                imdbInfo.cover = mdbInfo.cover || imdbInfo.cover;
-                imdbInfo.backdrop = mdbInfo.backdrop;
-            }
+                imdbInfo.trailer = imdbInfo.trailer && TRAILER_URL
+                    .expand({ trailerId: imdbInfo.trailer })
+                    .toString();
 
-            // trakttvInfo
-            if (trakttvInfo) {
-                imdbInfo.trailer = trakttvInfo.trailer || imdbInfo.trailer;
-
-                if (trakttvInfo.state) {
-                    imdbInfo.state = trakttvInfo.state;
+                // mdbInfo
+                if (mdbInfo) {
+                    imdbInfo.cover = mdbInfo.cover || imdbInfo.cover;
+                    imdbInfo.backdrop = mdbInfo.backdrop;
                 }
+
+                // trakttvInfo
+                if (trakttvInfo) {
+                    imdbInfo.trailer = trakttvInfo.trailer || imdbInfo.trailer;
+
+                    if (trakttvInfo.state) {
+                        imdbInfo.state = trakttvInfo.state;
+                    }
+                }
+
+                await browser.close();
+
+                if (!status) {
+                    status = true;
+                    debug('seems to be back');
+                }
+
+                return imdbInfo;
+            } catch (err) {
+                try { await browser.close(); } catch (err) {};
+
+                status = false;
+                log.crit('[IMDb] ' + (err.stack || err));
+
+                return null;
+            }
+        },
+        resizeImage: function(imageUrl, size) {
+            let toSize;
+
+            switch (size) {
+                case 'thumb':
+                    toSize = '_V1._SX300.jpg';
+                    break;
+                case 'medium':
+                    toSize = '_V1._SX600.jpg';
+                    break;
+                default:
+                    toSize = '_V1._SY0.jpg';
+                    break;
             }
 
-            await browser.close();
-
-            if (!status) {
-                status = true;
-                debug('seems to be back');
-            }
-
-            return imdbInfo;
-        } catch (err) {
-            if (browser) await browser.close();
-
-            status = false;
-            log.crit('[IMDb] ' + (err.stack || err));
-
-            return null;
+            return imageUrl.replace(/_V1.*?\.jpg/i, toSize);
+        },
+        getURL: function() {
+            return URL;
+        },
+        getTitleURL: function() {
+            return TITLE_URL;
+        },
+        isOn: function() {
+            return status;
         }
-    },
-    resizeImage: function(imageUrl, size) {
-        let toSize;
-
-        switch (size) {
-            case 'thumb':
-                toSize = '_V1._SX300.jpg';
-                break;
-            case 'medium':
-                toSize = '_V1._SX600.jpg';
-                break;
-            default:
-                toSize = '_V1._SY0.jpg';
-                break;
-        }
-
-        return imageUrl.replace(/_V1.*?\.jpg/i, toSize);
-    },
-    getURL: function() {
-        return URL;
-    },
-    getTitleURL: function() {
-        return TITLE_URL;
-    },
-    isOn: function() {
-        return status;
-    }
 }
 
 async function fetchInfo(page, imdbId) {
@@ -227,7 +227,7 @@ async function fetchAKAs(page, imdbId) {
         return result;
     });
 
-    if (!result.successful) throw result.error;
+    if (!result.successful) throw new Error(result.error);
 
     return result.akas;
 }

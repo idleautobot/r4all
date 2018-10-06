@@ -31,72 +31,72 @@ let status = true;
 
 const TraktTv = {
     fetch: async function(imdbId, type) {
-        try {
-            const res = await get(type + 's/' + imdbId, {
-                extended: 'full'
-            });
+            try {
+                const media = {};
 
-            const media = {};
+                const res = await get(type + 's/' + imdbId, {
+                    extended: 'full'
+                });
 
-            // validation
-            if ('trailer' in res) {
-                media.trailer = res.trailer;
-                media.state = res.status;
+                // validation
+                if ('trailer' in res) {
+                    media.trailer = res.trailer;
+                    media.state = res.status;
+                }
+
+                if (!status) {
+                    status = true;
+                    debug('seems to be back');
+                }
+
+                return media;
+            } catch (err) {
+                status = false;
+                log.crit('[TraktTv] ' + (err.stack || err));
+
+                return null;
             }
+        },
+        fetchEpisodes: async function(imdbId) {
+                try {
+                    const episodes = {};
 
-            if (!status) {
-                status = true;
-                debug('seems to be back');
-            }
-
-            return media;
-        } catch (err) {
-            status = false;
-            log.crit('[TraktTv] ' + (err.stack || err));
-
-            return null;
-        }
-    },
-    fetchEpisodes: async function(imdbId) {
-        try {
-            const res = await get('shows/' + imdbId + '/seasons', {
-                extended: 'episodes'
-            });
-
-            const episodes = {};
-
-            for (let s = 0; res && s < res.length; s++) {
-                for (let ep = 0; res[s].episodes && ep < res[s].episodes.length; ep++) {
-                    const season = res[s].episodes[ep].season;
-                    const episode = res[s].episodes[ep].number;
-
-                    const episodeInfo = await get('shows/' + imdbId + '/seasons/' + season + '/episodes/' + episode, {
-                        extended: 'full'
+                    const res = await get('shows/' + imdbId + '/seasons', {
+                        extended: 'episodes'
                     });
 
-                    episodes[episodeInfo.season] = episodes[season] || {};
-                    episodes[episodeInfo.season][episodeInfo.number] = {
-                        title: episodeInfo.title,
-                        aired: new Date(episodeInfo.first_aired),
-                        overview: episodeInfo.overview
-                    };
+                    for (let s = 0; res && s < res.length; s++) {
+                        for (let ep = 0; res[s].episodes && ep < res[s].episodes.length; ep++) {
+                            const season = res[s].episodes[ep].season;
+                            const episode = res[s].episodes[ep].number;
+
+                            const episodeInfo = await get('shows/' + imdbId + '/seasons/' + season + '/episodes/' + episode, {
+                                extended: 'full'
+                            });
+
+                            episodes[episodeInfo.season] = episodes[season] || {};
+                            episodes[episodeInfo.season][episodeInfo.number] = {
+                                title: episodeInfo.title,
+                                aired: new Date(episodeInfo.first_aired),
+                                overview: episodeInfo.overview
+                            };
+                        }
+                    }
+
+                    return episodes;
+                } catch (err) {
+                    status = false;
+                    log.crit('[TraktTv] ' + (err.stack || err));
+
+                    return null;
                 }
+            },
+            getURL: function() {
+                return URL;
+            },
+            isOn: function() {
+                return status;
             }
-
-            return episodes;
-        } catch (err) {
-            status = false;
-            log.crit('[TraktTv] ' + (err.stack || err));
-
-            return null;
-        }
-    },
-    getURL: function() {
-        return URL;
-    },
-    isOn: function() {
-        return status;
-    }
 };
 
 /*

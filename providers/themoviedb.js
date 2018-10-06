@@ -14,57 +14,57 @@ let baseURL = null;
 
 const TMDb = {
     fetch: async function(imdbId, type) {
-        try {
-            if (!baseURL) {
-                const res = await MovieDB.configurationAsync();
+            try {
+                if (!baseURL) {
+                    const res = await MovieDB.configurationAsync();
 
-                if ('images' in res && 'secure_base_url' in res.images) {
-                    baseURL = res.images.secure_base_url;
-                } else {
-                    throw 'unable to fetch baseURL';
+                    if ('images' in res && 'secure_base_url' in res.images) {
+                        baseURL = res.images.secure_base_url;
+                    } else {
+                        throw 'unable to fetch baseURL';
+                    }
                 }
+
+                const res = await MovieDB.findAsync({ id: imdbId, external_source: 'imdb_id' });
+
+                const media = fetchMedia(res, type);
+
+                if (!status) {
+                    status = true;
+                    debug('seems to be back');
+                }
+
+                return media;
+            } catch (err) {
+                status = false;
+                log.crit('[TMDb] ' + (err.stack || err));
+
+                return null;
+            }
+        },
+        resizeImage: function(imageUrl, size) {
+            let toSize;
+
+            switch (size) {
+                case 'thumb':
+                    toSize = '/w300/';
+                    break;
+                case 'medium':
+                    toSize = '/w500/';
+                    break;
+                default:
+                    toSize = '/original/';
+                    break;
             }
 
-            const res = await MovieDB.findAsync({ id: imdbId, external_source: 'imdb_id' });
-
-            const media = fetchMedia(res, type);
-
-            if (!status) {
-                status = true;
-                debug('seems to be back');
-            }
-
-            return media;
-        } catch (err) {
-            status = false;
-            log.crit('[TMDb] ' + (err.stack || err));
-
-            return null;
+            return imageUrl.replace(/\/original\//i, toSize);
+        },
+        getURL: function() {
+            return URL;
+        },
+        isOn: function() {
+            return status;
         }
-    },
-    resizeImage: function(imageUrl, size) {
-        let toSize;
-
-        switch (size) {
-            case 'thumb':
-                toSize = '/w300/';
-                break;
-            case 'medium':
-                toSize = '/w500/';
-                break;
-            default:
-                toSize = '/original/';
-                break;
-        }
-
-        return imageUrl.replace(/\/original\//i, toSize);
-    },
-    getURL: function() {
-        return URL;
-    },
-    isOn: function() {
-        return status;
-    }
 };
 
 function fetchMedia(res, type) {
