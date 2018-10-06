@@ -73,7 +73,6 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
 
                 proxy = proxy || proxies.shift();
 
-                //try { await page.close(); } catch (err) {};
                 try { await browser.close(); } catch (err) {};
 
                 browser = await puppeteer.launch({
@@ -90,7 +89,6 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                         debug('PageOnError: ' + err.message);
 
                         setTimeout(async function() {
-                            //try { await page.close(); } catch (err) {};
                             try { await browser.close(); } catch (err) {};
                             await fetchReleases(currRun, resolve, lastRelease, pageNumber, releases, instance);
                         }, 5000);
@@ -127,11 +125,8 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                 return;
             }
         }
-
-        //isInit = true;
     }
 
-    //try { await page.close(); } catch (err) {};
     try { await browser.close(); } catch (err) {};
 
     delete runs[currRun];
@@ -158,7 +153,6 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
 
                 proxy = proxy || proxies.shift();
 
-                //try { await page.close(); } catch (err) {};
                 try { await browser.close(); } catch (err) {};
 
                 browser = await puppeteer.launch({
@@ -175,7 +169,6 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
                         debug('PageOnError: ' + err.message);
 
                         setTimeout(async function() {
-                            //try { await page.close(); } catch (err) {};
                             try { await browser.close(); } catch (err) {};
                             await fetchMagnet(currRun, resolve, tid, instance);
                         }, 5000);
@@ -212,11 +205,8 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
                 return;
             }
         }
-
-        //isInit = true;
     }
 
-    //try { await page.close(); } catch (err) {};
     try { await browser.close(); } catch (err) {};
 
     delete runs[currRun];
@@ -262,12 +252,10 @@ async function pageLoadedHandler(page, expectedPage, io, attempt = 0) {
     switch (pageLoaded) {
         case RARBG_PAGES.torrentList:
             const done = await getReleasesFromPage(page, io);
-
-            //if (!done) await sleep(((Math.random() * 5) + 10) * 1000);
-
             return done;
         case RARBG_PAGES.torrent:
-            return await getTorrentMagnet(page);
+            const magnet = await getTorrentMagnet(page);
+            return magnet;
         case RARBG_PAGES.verifying:
             debug('verifying the browser...');
             await page.waitForNavigation();
