@@ -62,117 +62,33 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 require('./routes')(app);
 
-function memoryUsage() {
+async function memoryUsage() {
     var data = {
         date: app.locals.moment().tz('Europe/Lisbon').toDate(),
         rss: process.memoryUsage().rss
     };
 
-    return app.locals.db.insertMemoryUsage(data)
-        .then(setTimeout(memoryUsage, 15 * 60 * 1000));
-};
+    await app.locals.db.insertMemoryUsage(data);
+    setTimeout(memoryUsage, 15 * 60 * 1000);
+}
 
 process.env.NODE_ENV = 'production';
 
-(function initApp(isProduction) {
-    app.locals.db.initialize()
-        .then(function() {
-            return isProduction && memoryUsage();
-        })
-        .then(function() {
-            http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
-                debug('express server listening on port ' + app.get('port'));
-                return (isProduction && app.locals.core.refresh());
-            });
-        })
-        .catch(function(err) {
-            console.log(err);
+(async function initApp(isProduction) {
+    try {
+        await app.locals.db.initialize();
+
+        if (isProduction) memoryUsage();
+
+        http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
+            debug('express server listening on port ' + app.get('port'));
         });
+
+        if (isProduction) app.locals.core.refresh();
+    } catch (err) {
+        console.log(err);
+    }
 })(process.env.NODE_ENV === 'production');
-
-// const puppeteer = require('puppeteer');
-// const events = require('events');
-
-// var eventEmitter = new events.EventEmitter();
-
-// function sleep(ms = 0) {
-//     return new Promise(r => setTimeout(r, ms));
-// }
-
-// // listener #1
-// var listner1 = async function listner1(browser, launch, instance) {
-//     await sleep(1000);
-//     await browser.close();
-//     await launch(++instance);
-// }
-
-// // Bind the connection event with the listner1 function
-// eventEmitter.addListener('connection', listner1);
-
-// (async function launch(instance = 0) {
-//     let browser = null;
-//     let page = null;
-// await sleep(1000);
-//     try {
-//         browser = await puppeteer.launch();
-//         page = await browser.newPage();
-
-//         page.on('error', async function(err) {
-//             console.log('[' + instance + '] PageOnError: caught!');
-//         });
-
-//         page.on('load', async function(err) {
-//             console.log('[' + instance + '] loaded');
-//             await browser.close();
-//             await launch(++instance);
-//         });
-
-//         console.log('[' + instance + '] loading...');
-
-//         await page.goto('http://www.google.com');
-//     } catch (err) {
-//         console.log('[' + instance + '] OnError: caught!', err);
-//         console.log(err.stack);
-//     }
-// })();
-
-// const puppeteer = require('puppeteer');
-
-// function sleep(ms = 0) {
-//     return new Promise(r => setTimeout(r, ms));
-// }
-
-// (async function launch(instance = 0) {
-//     let browser = null;
-//     let page = null;
-
-//     try {
-//         if(instance < 100) {
-//             browser = await puppeteer.launch();
-//             page = await browser.newPage();
-
-//             page.on('error', async function(err) {
-//                 console.log('[' + instance + '] PageOnError: caught!');
-//             });
-
-//             page.on('load', async function(err) {
-//                 console.log('[' + instance + '] loaded');
-//                 try { await page.close(); } catch (err) { console.log(err); };
-//                 try { await browser.close(); } catch (err) { console.log(err); };
-//                 await launch(++instance);
-//             });
-
-//             console.log('[' + instance + '] loading...');
-
-//             await page.goto('http://www.google.com');            
-//         } else {
-//             await sleep(5*60*1000);
-//         }
-//     } catch (err) {
-//         console.log('[' + instance + '] OnError: caught!', err);
-//     }
-// })();
-
 
 // return app.locals.providers.legendasdivx.fetchSubtitle('Overdrive.2017.LIMITED.720p.BluRay.x264-DRONES', 'tt1935194', true)
 //     .then(function(subtitle) {

@@ -25,116 +25,116 @@ let lastRefresh = null;
 
 const Core = {
     refresh: async function() {
-        status = true;
-        isBusy = true;
+            status = true;
+            isBusy = true;
 
-        debug('refreshing...');
+            debug('refreshing...');
 
-        try {
-            const fetchResult = await fetchReleases();
+            try {
+                const fetchResult = await fetchReleases();
 
-            if (!_.isEmpty(fetchResult.releases)) {
-                await upsertReleases(fetchResult.releases);
+                if (!_.isEmpty(fetchResult.releases)) {
+                    await upsertReleases(fetchResult.releases);
 
-                if (fetchResult.bootstrap) {
-                    await db.upsertBootstrap(fetchResult.bootstrap);
+                    if (fetchResult.bootstrap) {
+                        await db.upsertBootstrap(fetchResult.bootstrap);
+                    }
                 }
+
+                await setReleasesMagnetLink();
+
+                await verifyReleases();
+
+                await refreshIMDbOutdated();
+
+                imdbList.clear();
+
+                refreshCount++;
+                lastRefresh = moment();
+
+                timer.set();
+                isBusy = false;
+
+                debug('refresh done!');
+
+                return;
+            } catch (err) {
+                log.fatal('[core] ' + (err.stack || err));
+
+                timer.clear();
+                isBusy = false;
+                status = false;
+
+                return;
             }
+        },
+        // ###
+        fetchSubtitle: async function(releaseId, forceFetch) {
+                // **************************************************
+                // fetchSubtitle
+                //   forceFetch:
+                //     - on movies it will get a subtitle event if it's not a ripped one.
+                //     - on shows it will just fetch the subtitle again (the most updated)
+                // **************************************************
+                // var type;
+                // var subtitleExists;
 
-            await setReleasesMagnetLink();
+                // return db.getReleaseSubtitle(releaseId)
+                //     .then(function(release) {
+                //         if (!release) return;
 
-            await verifyReleases();
+                //         type = release.imdb.type;
+                //         subtitleExists = !!release.subtitle;
 
-            await refreshIMDbOutdated();
+                //         if (type == 'movie') {
+                //             return release.subtitle || providers.legendasdivx.fetchSubtitle(release.name, release.imdbId, forceFetch);
+                //         } else {
+                //             if (!release.imdb.addic7edId) {
+                //                 providers.addic7ed.fetchShow(release.imdb.title, release.imdb.year)
+                //                     .then(function(addic7edId) {
+                //                         if (!addic7edId) return;
 
-            imdbList.clear();
+                //                         var imdbInfo = {
+                //                             _id: release.imdb._id,
+                //                             addic7edId: addic7edId,
+                //                             isVerified: false
+                //                         };
 
-            refreshCount++;
-            lastRefresh = moment();
+                //                         return db.upsertIMDb(imdbInfo);
+                //                     });
 
-            timer.set();
-            isBusy = false;
+                //                 return;
+                //             } else {
+                //                 return (!forceFetch && release.subtitle) || providers.addic7ed.fetch(release.name, release.imdb.addic7edId);
+                //             }
+                //         }
+                //     })
+                //     .then(function(subtitle) {
+                //         if (!subtitle) return;
 
-            debug('refresh done!');
+                //         var r = {
+                //             _id: releaseId,
+                //             subtitle: subtitle
+                //         };
 
-            return;
-        } catch (err) {
-            log.fatal('[core] ' + (err.stack || err));
-
-            timer.clear();
-            isBusy = false;
-            status = false;
-
-            return;
-        }
-    },
-    // ###
-    fetchSubtitle: async function(releaseId, forceFetch) {
-        // **************************************************
-        // fetchSubtitle
-        //   forceFetch:
-        //     - on movies it will get a subtitle event if it's not a ripped one.
-        //     - on shows it will just fetch the subtitle again (the most updated)
-        // **************************************************
-        // var type;
-        // var subtitleExists;
-
-        // return db.getReleaseSubtitle(releaseId)
-        //     .then(function(release) {
-        //         if (!release) return;
-
-        //         type = release.imdb.type;
-        //         subtitleExists = !!release.subtitle;
-
-        //         if (type == 'movie') {
-        //             return release.subtitle || providers.legendasdivx.fetchSubtitle(release.name, release.imdbId, forceFetch);
-        //         } else {
-        //             if (!release.imdb.addic7edId) {
-        //                 providers.addic7ed.fetchShow(release.imdb.title, release.imdb.year)
-        //                     .then(function(addic7edId) {
-        //                         if (!addic7edId) return;
-
-        //                         var imdbInfo = {
-        //                             _id: release.imdb._id,
-        //                             addic7edId: addic7edId,
-        //                             isVerified: false
-        //                         };
-
-        //                         return db.upsertIMDb(imdbInfo);
-        //                     });
-
-        //                 return;
-        //             } else {
-        //                 return (!forceFetch && release.subtitle) || providers.addic7ed.fetch(release.name, release.imdb.addic7edId);
-        //             }
-        //         }
-        //     })
-        //     .then(function(subtitle) {
-        //         if (!subtitle) return;
-
-        //         var r = {
-        //             _id: releaseId,
-        //             subtitle: subtitle
-        //         };
-
-        //         return Promise.resolve(((type == 'show' && (!subtitleExists || forceFetch)) || (type == 'movie' && !subtitleExists && !forceFetch)) && db.upsertRelease(r))
-        //             .then(function() {
-        //                 return subtitle;
-        //             });
-        //     });
-    },
-    stop: function() {
-        if (!isBusy) {
-            timer.clear();
-            status = false;
-            return true;
-        } else {
-            return false;
-        }
-    },
-    isOn: function() {
-        return status;
-    }
+                //         return Promise.resolve(((type == 'show' && (!subtitleExists || forceFetch)) || (type == 'movie' && !subtitleExists && !forceFetch)) && db.upsertRelease(r))
+                //             .then(function() {
+                //                 return subtitle;
+                //             });
+                //     });
+            },
+            stop: function() {
+                if (!isBusy) {
+                    timer.clear();
+                    status = false;
+                    return true;
+                } else {
+                    return false;
+                }
+            },
+            isOn: function() {
+                return status;
+            }
 };
 
 const timer = {
