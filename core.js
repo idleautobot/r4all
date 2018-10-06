@@ -31,7 +31,7 @@ const Core = {
         debug('refreshing...');
 
         try {
-            const fetchResult = await fetchReleases();
+            let fetchResult = await fetchReleases();
 
             if (!_.isEmpty(fetchResult.releases)) {
                 await upsertReleases(fetchResult.releases);
@@ -40,6 +40,8 @@ const Core = {
                     await db.upsertBootstrap(fetchResult.bootstrap);
                 }
             }
+
+            fetchResult = null;
 
             await setReleasesMagnetLink();
 
