@@ -72,8 +72,6 @@ async function memoryUsage() {
     setTimeout(memoryUsage, 15 * 60 * 1000);
 }
 
-process.env.NODE_ENV = 'production';
-
 (async function initApp(isProduction) {
     try {
         await app.locals.db.initialize();

@@ -66,7 +66,7 @@ const IMDb = {
 
             return imdbInfo;
         } catch (err) {
-            try { await browser.close(); } catch (err) {};
+            try { await browser.close(); } catch (err) {}
 
             status = false;
             log.crit('[IMDb] ' + (err.stack || err));

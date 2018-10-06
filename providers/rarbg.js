@@ -41,9 +41,9 @@ const RARBG = {
             await fetchReleases(++runCounter, resolve, lastRelease, lastPage);
         });
     },
-    fetchMagnet: async function(tid) {
+    fetchMagnet: async function(releases) {
         return new Promise(async function(resolve, reject) {
-            await fetchMagnet(++runCounter, resolve, tid);
+            await fetchMagnet(++runCounter, resolve, releases);
         });
     },
     getURL: function() {
@@ -73,7 +73,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
 
                 proxy = proxy || proxies.shift();
 
-                try { await browser.close(); } catch (err) {};
+                try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
@@ -89,7 +89,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                         debug('PageOnError: ' + err.message);
 
                         setTimeout(async function() {
-                            try { await browser.close(); } catch (err) {};
+                            try { await browser.close(); } catch (err) {}
                             await fetchReleases(currRun, resolve, lastRelease, pageNumber, releases, instance);
                         }, 5000);
                     } else {
@@ -102,11 +102,6 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
             done = await pageLoadedHandler(page, RARBG_PAGES.torrentList, { lastRelease: lastRelease, releases: releases });
 
             pageNumber++;
-
-            if (done && !status) {
-                status = true;
-                debug('seems to be back');
-            }
         } catch (err) {
             if (instance === runs[currRun]) {
                 if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
@@ -127,23 +122,27 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
         }
     }
 
-    try { await browser.close(); } catch (err) {};
+    try { await browser.close(); } catch (err) {}
 
     delete runs[currRun];
 
-    resolve({ success: done, releases: releases });
+    if (done && !status) {
+        status = true;
+        debug('seems to be back');
+    }
+
+    resolve({ success: done, releases: _.sortBy(releases, 'pubdate') });
 }
 
-async function fetchMagnet(currRun, resolve, tid, instance = 0) {
+async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) {
     runs[currRun] = instance;
 
     let isInit = true;
-    let done = false;
     let browser = null;
     let page = null;
     let magnet = null;
 
-    while (!done) {
+    while (index < releases.length) {
         try {
             if (isInit) {
                 isInit = false;
@@ -153,7 +152,7 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
 
                 proxy = proxy || proxies.shift();
 
-                try { await browser.close(); } catch (err) {};
+                try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
@@ -169,8 +168,8 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
                         debug('PageOnError: ' + err.message);
 
                         setTimeout(async function() {
-                            try { await browser.close(); } catch (err) {};
-                            await fetchMagnet(currRun, resolve, tid, instance);
+                            try { await browser.close(); } catch (err) {}
+                            await fetchMagnet(currRun, resolve, releases, index, instance);
                         }, 5000);
                     } else {
                         debug('Unexpected PageOnError from instance ' + instance + ' whilst on ' + runs[currRun] + ' instance: ' + err.message);
@@ -178,15 +177,12 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
                 });
             }
 
-            await loadTorrentPage(page, tid, currRun, instance);
-            magnet = await pageLoadedHandler(page, RARBG_PAGES.torrent);
+            const release = releases[index];
 
-            done = true;
+            await loadTorrentPage(page, release.tid, currRun, instance);
+            release.magnet = await pageLoadedHandler(page, RARBG_PAGES.torrent);
 
-            if (done && !status) {
-                status = true;
-                debug('seems to be back');
-            }
+            index++;
         } catch (err) {
             if (instance === runs[currRun]) {
                 if (err.message.startsWith('net::ERR') || err instanceof TimeoutError || err.name === 'KnownError') {
@@ -207,9 +203,14 @@ async function fetchMagnet(currRun, resolve, tid, instance = 0) {
         }
     }
 
-    try { await browser.close(); } catch (err) {};
+    try { await browser.close(); } catch (err) {}
 
     delete runs[currRun];
+
+    if (index == releases.length && !status) {
+        status = true;
+        debug('seems to be back');
+    }
 
     resolve(magnet);
 }

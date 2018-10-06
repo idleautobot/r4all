@@ -71,7 +71,7 @@ const FreeProxyLists = {
                 throw new Error(result.error);
             }
         } catch (err) {
-            try { await browser.close(); } catch (err) {};
+            try { await browser.close(); } catch (err) {}
 
             status = false;
             log.crit('[FreeProxyLists] ' + (err.stack || err));

@@ -31,17 +31,7 @@ const Core = {
         debug('refreshing...');
 
         try {
-            let fetchResult = await fetchReleases();
-
-            if (!_.isEmpty(fetchResult.releases)) {
-                await upsertReleases(fetchResult.releases);
-
-                if (fetchResult.bootstrap) {
-                    await db.upsertBootstrap(fetchResult.bootstrap);
-                }
-            }
-
-            fetchResult = null;
+            await fetchNewReleases();
 
             await setReleasesMagnetLink();
 
@@ -163,9 +153,9 @@ const imdbList = {
 };
 
 // **************************************************
-// fetch releases
+// fetch new releases
 // **************************************************
-async function fetchReleases() {
+async function fetchNewReleases() {
     debug('fetching new releases...');
 
     const rarbg = providers.rarbg;
@@ -187,19 +177,17 @@ async function fetchReleases() {
     const result = await rarbg.fetchReleases(lastRelease, bootstrap.lastPage);
 
     if (_.isEmpty(result.releases) || (!result.success && bootstrap.done)) {
-        result.releases = [];
+        // do nothing
     } else {
-        result.releases = _.sortBy(result.releases, 'pubdate');
+        await upsertReleases(result.releases);
 
         if (!bootstrap.done) {
-            result.bootstrap = {
+            await db.upsertBootstrap({
                 done: result.success,
                 lastPage: _.max([bootstrap.lastPage, _.maxBy(result.releases, 'page').page])
-            };
+            });
         }
     }
-
-    return result;
 }
 
 // **************************************************
@@ -238,19 +226,17 @@ async function setReleasesMagnetLink() {
     const rarbg = providers.rarbg;
     const releases = await db.getReleasesWithoutMagnetLink();
 
+    try { await rarbg.fetchMagnet(releases); } catch (err) {}
+
     for (const release of releases) {
-        try {
-            const magnet = await rarbg.fetchMagnet(release.tid);
+        if (release.magnet) {
+            const r = {
+                _id: release._id,
+                magnet: magnet
+            };
 
-            if (magnet) {
-                const r = {
-                    _id: release._id,
-                    magnet: magnet
-                };
-
-                await db.upsertRelease(r);
-            }
-        } catch (err) {}
+            await db.upsertRelease(r);
+        }
     }
 }
 
