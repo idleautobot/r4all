@@ -37,21 +37,21 @@ let proxy = null;
 
 const RARBG = {
     fetchReleases: async function(lastRelease, lastPage) {
-            return new Promise(async function(resolve, reject) {
-                await fetchReleases(++runCounter, resolve, lastRelease, lastPage);
-            });
-        },
-        fetchMagnet: async function(tid) {
-                return new Promise(async function(resolve, reject) {
-                    await fetchMagnet(++runCounter, resolve, tid);
-                });
-            },
-            getURL: function() {
-                return URL;
-            },
-            isOn: function() {
-                return status;
-            }
+        return new Promise(async function(resolve, reject) {
+            await fetchReleases(++runCounter, resolve, lastRelease, lastPage);
+        });
+    },
+    fetchMagnet: async function(tid) {
+        return new Promise(async function(resolve, reject) {
+            await fetchMagnet(++runCounter, resolve, tid);
+        });
+    },
+    getURL: function() {
+        return URL;
+    },
+    isOn: function() {
+        return status;
+    }
 };
 
 async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases = {}, instance = 0) {

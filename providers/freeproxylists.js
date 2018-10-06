@@ -12,79 +12,79 @@ let status = true;
 
 const FreeProxyLists = {
     fetchList: async function() {
-            debug('fetching proxy list...');
+        debug('fetching proxy list...');
 
-            let browser = null;
+        let browser = null;
 
-            try {
-                browser = await puppeteer.launch({
-                    args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
-                    userDataDir: 'chromium-profile'
-                });
+        try {
+            browser = await puppeteer.launch({
+                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
+                userDataDir: 'chromium-profile'
+            });
 
-                const page = await browser.newPage();
+            const page = await browser.newPage();
 
-                let url = URL.toString();
+            let url = URL.toString();
 
-                debug(url);
+            debug(url);
 
-                await page.goto(url);
+            await page.goto(url);
 
-                await page.click('a[href^="https/"]');
+            await page.click('a[href^="https/"]');
 
-                await page.waitForSelector('#dataID table');
+            await page.waitForSelector('#dataID table');
 
-                await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
+            await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
 
-                const result = await page.evaluate(() => {
-                    const result = {
-                        successful: true,
-                        proxies: []
-                    };
+            const result = await page.evaluate(() => {
+                const result = {
+                    successful: true,
+                    proxies: []
+                };
 
-                    try {
-                        // loop through every row
-                        $('#dataID table tbody tr').each(function() {
-                            if ($(this).find('td').length == 2) {
-                                const proxy = $(this).find('td').eq(0).text() + ':' + $(this).find('td').eq(1).text();
-                                result.proxies.push(proxy);
-                            }
-                        });
-                    } catch (err) {
-                        result.successful = false;
-                        result.error = err.stack;
-                    }
-
-                    return result;
-                });
-
-                await browser.close();
-
-                if (result.successful) {
-                    if (!status) {
-                        status = true;
-                        debug('seems to be back');
-                    }
-
-                    return result.proxies;
-                } else {
-                    throw new Error(result.error);
+                try {
+                    // loop through every row
+                    $('#dataID table tbody tr').each(function() {
+                        if ($(this).find('td').length == 2) {
+                            const proxy = $(this).find('td').eq(0).text() + ':' + $(this).find('td').eq(1).text();
+                            result.proxies.push(proxy);
+                        }
+                    });
+                } catch (err) {
+                    result.successful = false;
+                    result.error = err.stack;
                 }
-            } catch (err) {
-                try { await browser.close(); } catch (err) {};
 
-                status = false;
-                log.crit('[FreeProxyLists] ' + (err.stack || err));
+                return result;
+            });
 
-                return [];
+            await browser.close();
+
+            if (result.successful) {
+                if (!status) {
+                    status = true;
+                    debug('seems to be back');
+                }
+
+                return result.proxies;
+            } else {
+                throw new Error(result.error);
             }
-        },
-        getURL: function() {
-            return URL;
-        },
-        isOn: function() {
-            return status;
+        } catch (err) {
+            try { await browser.close(); } catch (err) {};
+
+            status = false;
+            log.crit('[FreeProxyLists] ' + (err.stack || err));
+
+            return [];
         }
+    },
+    getURL: function() {
+        return URL;
+    },
+    isOn: function() {
+        return status;
+    }
 };
 
 module.exports = FreeProxyLists;
