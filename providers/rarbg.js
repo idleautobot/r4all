@@ -140,7 +140,6 @@ async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) 
     let isInit = true;
     let browser = null;
     let page = null;
-    let magnet = null;
 
     while (index < releases.length) {
         try {
@@ -212,7 +211,7 @@ async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) 
         debug('seems to be back');
     }
 
-    resolve(magnet);
+    resolve();
 }
 
 async function loadReleaseListPage(page, pageNumber, currRun, instance) {
