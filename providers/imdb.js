@@ -30,6 +30,15 @@ const IMDb = {
 
             const page = await browser.newPage();
 
+            await page.setRequestInterception(true);
+
+            page.on('request', request => {
+                if (request.resourceType() === 'image')
+                    request.abort();
+                else
+                    request.continue();
+            });
+
             let imdbInfo = fetchInfo(page, imdbId);
             let mdbInfo = mdb.fetch(imdbId, type);
             let trakttvInfo = trakttv.fetch(imdbId, type);

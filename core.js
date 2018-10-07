@@ -234,7 +234,7 @@ async function setReleasesMagnetLink() {
         if (release.magnet) {
             const r = {
                 _id: release._id,
-                magnet: magnet
+                magnet: release.magnet
             };
 
             await db.upsertRelease(r);

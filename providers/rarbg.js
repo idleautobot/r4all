@@ -84,6 +84,15 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
 
                 page = await browser.newPage();
 
+                await page.setRequestInterception(true);
+
+                page.on('request', request => {
+                    if (request.resourceType() === 'image' && request.url().indexOf('/threat_captcha.php') === -1)
+                        request.abort();
+                    else
+                        request.continue();
+                });
+
                 page.on('error', async function(err) {
                     if (instance === runs[currRun]) {
                         debug('PageOnError: ' + err.message);
@@ -161,6 +170,15 @@ async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) 
                 runs[currRun] = ++instance;
 
                 page = await browser.newPage();
+
+                await page.setRequestInterception(true);
+
+                page.on('request', request => {
+                    if (request.resourceType() === 'image' && request.url().indexOf('/threat_captcha.php') === -1)
+                        request.abort();
+                    else
+                        request.continue();
+                });
 
                 page.on('error', async function(err) {
                     if (instance === runs[currRun]) {
