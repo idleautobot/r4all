@@ -179,13 +179,15 @@ async function fetchNewReleases() {
     if (_.isEmpty(result.releases) || (!result.success && bootstrap.done)) {
         // do nothing
     } else {
+        result.bootstrap = {
+            done: result.success,
+            lastPage: _.max([bootstrap.lastPage, _.maxBy(result.releases, 'page').page])
+        };
+
         await upsertReleases(result.releases);
 
         if (!bootstrap.done) {
-            await db.upsertBootstrap({
-                done: result.success,
-                lastPage: _.max([bootstrap.lastPage, _.maxBy(result.releases, 'page').page])
-            });
+            await db.upsertBootstrap(result.bootstrap);
         }
     }
 }
