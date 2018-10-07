@@ -21,12 +21,14 @@ const RARBG_PAGES = {
     cloudflare: 'cloudflare',
     empty: 'empty',
     banned: 'banned',
+    tooManyRequests: 'tooManyRequests',
     unknown: 'unknown'
 };
 const RARBG_PAGES_ERROR = {
     cloudflare: 'cloudflare protection...',
     empty: 'page is empty...',
-    banned: 'banned...'
+    banned: 'banned...',
+    tooManyRequests: 'too many requests...'
 };
 
 let status = true;
@@ -291,6 +293,7 @@ async function pageLoadedHandler(page, expectedPage, io, attempt = 0) {
         case RARBG_PAGES.cloudflare:
         case RARBG_PAGES.empty:
         case RARBG_PAGES.banned:
+        case RARBG_PAGES.tooManyRequests:
             e = new Error(RARBG_PAGES_ERROR[pageLoaded]);
             e.name = 'KnownError';
             throw e;
@@ -329,6 +332,8 @@ async function getPageLoaded(page, expectedPage) {
                 pageLoaded = RARBG_PAGES.captcha;
             } else if ($('body:contains("We have too many requests from your ip in the past 24h.")').length) {
                 pageLoaded = RARBG_PAGES.banned;
+            } else if ($('h1').text() == '429 Too Many Requests') {
+                pageLoaded = RARBG_PAGES.tooManyRequests;
             }
         } catch (err) {}
 
