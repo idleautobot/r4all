@@ -24,15 +24,6 @@ const FreeProxyLists = {
 
             const page = await browser.newPage();
 
-            await page.setRequestInterception(true);
-
-            page.on('request', request => {
-                if (request.resourceType() === 'image')
-                    request.abort();
-                else
-                    request.continue();
-            });
-
             let url = URL.toString();
 
             debug(url);

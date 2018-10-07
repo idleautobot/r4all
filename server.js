@@ -81,7 +81,7 @@ async function memoryUsage() {
         http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
             debug('express server listening on port ' + app.get('port'));
 
-            if (isProduction) app.locals.core.refresh();
+            app.locals.core.refresh();
         });
     } catch (err) {
         console.log(err);
