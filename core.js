@@ -275,17 +275,19 @@ async function verifyMovie(release) {
     if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare movie title
         validated = true;
     } else {
-        imdbInfo.akas.some(function(aka) {
-            movieTitleEncoded = common.scene.titleEncode(aka).toUpperCase();
+        if (imdbInfo.akas) {
+            imdbInfo.akas.some(function(aka) {
+                movieTitleEncoded = common.scene.titleEncode(aka).toUpperCase();
 
-            if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare aka movie title
-                imdbInfo.aka = aka;
-                validated = true;
-                return true;
-            }
+                if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare aka movie title
+                    imdbInfo.aka = aka;
+                    validated = true;
+                    return true;
+                }
 
-            return false;
-        });
+                return false;
+            });
+        }
     }
 
     // Year && Type check
