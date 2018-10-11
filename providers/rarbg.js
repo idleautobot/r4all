@@ -15,6 +15,7 @@ const TORRENT_URL = URITemplate(URL.toString() + 'torrent/{tid}');
 const RARBG_PAGES = {
     torrentList: 'torrentList',
     torrent: 'torrent',
+    noSuchTorrent: 'noSuchTorrent',
     verifying: 'verifying',
     retry: 'retry',
     captcha: 'captcha',
@@ -270,12 +271,20 @@ async function pageLoadedHandler(page, expectedPage, io, attempt = 0) {
     const pageLoaded = await getPageLoaded(page, expectedPage);
 
     switch (pageLoaded) {
+        // fetchReleases
         case RARBG_PAGES.torrentList:
             const done = await getReleasesFromPage(page, io);
             return done;
+
+            // fetchMagnet
         case RARBG_PAGES.torrent:
             const magnet = await getTorrentMagnet(page);
             return magnet;
+        case RARBG_PAGES.noSuchTorrent:
+            debug('no such torrent...');
+            return null;
+
+            // other landing pages
         case RARBG_PAGES.verifying:
             debug('verifying the browser...');
             await page.waitForNavigation();
@@ -316,14 +325,16 @@ async function getPageLoaded(page, expectedPage) {
         let pageLoaded = RARBG_PAGES.unknown;
 
         try {
-            if ($('table.lista2t').length && expectedPage == RARBG_PAGES.torrentList) {
+            if ($('body:empty').length) {
+                pageLoaded = RARBG_PAGES.empty;
+            } else if ($('#cf-wrapper').length) {
+                pageLoaded = RARBG_PAGES.cloudflare;
+            } else if ($('table.lista2t').length && expectedPage == RARBG_PAGES.torrentList) {
                 pageLoaded = RARBG_PAGES.torrentList;
             } else if ($('table.lista').length && expectedPage == RARBG_PAGES.torrent) {
                 pageLoaded = RARBG_PAGES.torrent;
-            } else if ($('#cf-wrapper').length) {
-                pageLoaded = RARBG_PAGES.cloudflare;
-            } else if ($('body:empty').length) {
-                pageLoaded = RARBG_PAGES.empty;
+            } else if ($('table.lista-rounded tr:contains("No such torrent")').length && expectedPage == RARBG_PAGES.torrent) {
+                pageLoaded = RARBG_PAGES.noSuchTorrent;
             } else if ($('body:contains("Please wait while we try to verify your browser...")').length) {
                 pageLoaded = RARBG_PAGES.verifying;
             } else if ($('a[href="/threat_defence.php?defence=1"]').attr('href')) {
