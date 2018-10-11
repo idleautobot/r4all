@@ -72,29 +72,25 @@ async function memoryUsage() {
     setTimeout(memoryUsage, 15 * 60 * 1000);
 }
 
-// (async function initApp(isProduction) {
-//     try {
-//         await app.locals.db.initialize();
+process.setMaxListeners(Infinity);
+process.on('warning', e => console.warn(e.stack));
 
-//         if (isProduction) memoryUsage();
+(async function initApp(isProduction) {
+    try {
+        await app.locals.db.initialize();
 
-//         http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
-//             debug('express server listening on port ' + app.get('port'));
+        if (isProduction) memoryUsage();
 
-//             if (isProduction) app.locals.core.refresh();
-//         });
-//     } catch (err) {
-//         console.log(err);
-//     }
-// })(process.env.NODE_ENV === 'production');
+        http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
+            debug('express server listening on port ' + app.get('port'));
 
+            if (isProduction) app.locals.core.refresh();
+        });
+    } catch (err) {
+        console.log(err);
+    }
+})(process.env.NODE_ENV === 'production');
 
-
-(async function(){
-const a = [{tid: '235hv9i'}]
-const result = await app.locals.providers.imdb.fetch('tt2518926', 'movie');
-console.log(result);
-})();
 // return app.locals.providers.legendasdivx.fetchSubtitle('Overdrive.2017.LIMITED.720p.BluRay.x264-DRONES', 'tt1935194', true)
 //     .then(function(subtitle) {
 //         console.log(subtitle);
