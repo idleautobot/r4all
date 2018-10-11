@@ -91,8 +91,8 @@ async function memoryUsage() {
 
 
 (async function(){
-
-const result = await app.locals.providers.rarbg.fetchMagnet([{tid: '235hv9i'}]);
+const a = [{tid: '235hv9i'}]
+const result = await app.locals.providers.imdb.fetch('tt2518926', 'movie');
 console.log(result);
 })();
 // return app.locals.providers.legendasdivx.fetchSubtitle('Overdrive.2017.LIMITED.720p.BluRay.x264-DRONES', 'tt1935194', true)

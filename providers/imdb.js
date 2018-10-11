@@ -20,68 +20,9 @@ let status = true;
 
 const IMDb = {
     fetch: async function(imdbId, type) {
-        let browser = null;
-
-        try {
-            browser = await puppeteer.launch({
-                args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
-                userDataDir: 'chromium-profile'
-            });
-
-            const page = await browser.newPage();
-
-            await page.setRequestInterception(true);
-
-            page.on('request', request => {
-                if (request.resourceType() === 'image')
-                    request.abort();
-                else
-                    request.continue();
-            });
-
-            let imdbInfo = fetchInfo(page, imdbId);
-            let mdbInfo = mdb.fetch(imdbId, type);
-            let trakttvInfo = trakttv.fetch(imdbId, type);
-
-            [imdbInfo, mdbInfo, trakttvInfo] = [await imdbInfo, await mdbInfo, await trakttvInfo];
-
-            if (!imdbInfo) return;
-
-            imdbInfo.trailer = imdbInfo.trailer && TRAILER_URL
-                .expand({ trailerId: imdbInfo.trailer })
-                .toString();
-
-            // mdbInfo
-            if (mdbInfo) {
-                imdbInfo.cover = mdbInfo.cover || imdbInfo.cover;
-                imdbInfo.backdrop = mdbInfo.backdrop;
-            }
-
-            // trakttvInfo
-            if (trakttvInfo) {
-                imdbInfo.trailer = trakttvInfo.trailer || imdbInfo.trailer;
-
-                if (trakttvInfo.state) {
-                    imdbInfo.state = trakttvInfo.state;
-                }
-            }
-
-            await browser.close();
-
-            if (!status) {
-                status = true;
-                debug('seems to be back');
-            }
-
-            return imdbInfo;
-        } catch (err) {
-            try { await browser.close(); } catch (err) {}
-
-            status = false;
-            log.crit('[IMDb] ' + (err.stack || err));
-
-            return null;
-        }
+        return new Promise(async function(resolve, reject) {
+            await fetch(resolve, imdbId, type);
+        });
     },
     resizeImage: function(imageUrl, size) {
         let toSize;
@@ -111,6 +52,83 @@ const IMDb = {
     }
 }
 
+async function fetch(resolve, imdbId, type) {
+    let browser = null;
+
+    try {
+        browser = await puppeteer.launch({
+            args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
+            userDataDir: 'chromium-profile'
+        });
+
+        const page = await browser.newPage();
+
+        await page.setRequestInterception(true);
+
+        page.on('request', request => {
+            if (request.resourceType() === 'image')
+                request.abort();
+            else
+                request.continue();
+        });
+
+        page.on('error', async function(err) {
+            debug('PageOnError: ' + err.message);
+
+            setTimeout(async function() {
+                try { await browser.close(); } catch (err) {}
+                resolve(null);
+            }, 5000);
+        });
+
+        let imdbInfo = fetchInfo(page, imdbId);
+        let mdbInfo = mdb.fetch(imdbId, type);
+        let trakttvInfo = trakttv.fetch(imdbId, type);
+
+        [imdbInfo, mdbInfo, trakttvInfo] = [await imdbInfo, await mdbInfo, await trakttvInfo];
+
+        if (!imdbInfo) {
+            resolve(null);
+            return;
+        }
+
+        imdbInfo.trailer = imdbInfo.trailer && TRAILER_URL
+            .expand({ trailerId: imdbInfo.trailer })
+            .toString();
+
+        // mdbInfo
+        if (mdbInfo) {
+            imdbInfo.cover = mdbInfo.cover || imdbInfo.cover;
+            imdbInfo.backdrop = mdbInfo.backdrop;
+        }
+
+        // trakttvInfo
+        if (trakttvInfo) {
+            imdbInfo.trailer = trakttvInfo.trailer || imdbInfo.trailer;
+
+            if (trakttvInfo.state) {
+                imdbInfo.state = trakttvInfo.state;
+            }
+        }
+
+        await browser.close();
+
+        if (!status) {
+            status = true;
+            debug('seems to be back');
+        }
+
+        resolve(imdbInfo);
+    } catch (err) {
+        try { await browser.close(); } catch (err) {}
+
+        status = false;
+        log.crit('[IMDb] ' + (err.stack || err));
+
+        resolve(null);
+    }
+}
+
 async function fetchInfo(page, imdbId) {
     const url = TITLE_URL
         .expand({ imdbId: imdbId })
@@ -119,6 +137,14 @@ async function fetchInfo(page, imdbId) {
     debug(url);
 
     await page.goto(url);
+
+    const hasjQuery = await page.evaluate(() => {
+        return (typeof window.$ === 'function');
+    });
+
+    if (!hasjQuery) {
+        await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
+    }
 
     const result = await page.evaluate(() => {
         const result = {
@@ -213,6 +239,14 @@ async function fetchAKAs(page, imdbId) {
     debug(url);
 
     await page.goto(url);
+
+    const hasjQuery = await page.evaluate(() => {
+        return (typeof window.$ === 'function');
+    });
+
+    if (!hasjQuery) {
+        await page.addScriptTag({ path: 'node_modules/jquery/dist/jquery.min.js' });
+    }
 
     const result = await page.evaluate(() => {
         const result = {
