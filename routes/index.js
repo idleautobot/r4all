@@ -1,7 +1,7 @@
 'use strict';
 
-var Promise = require('bluebird');
-var _ = require('lodash');
+const Promise = require('bluebird');
+const _ = require('lodash');
 
 function checkAuth(req, res, next) {
     if (!req.session.user_id) {
@@ -12,50 +12,49 @@ function checkAuth(req, res, next) {
     }
 }
 
-function getLayoutData(req, res, next) {
-    var locals = req.app.locals;
-    var db = locals.db;
+async function getLayoutData(req, res, next) {
+    const locals = req.app.locals;
+    const db = locals.db;
 
-    db.getReleasesCount()
-        .then(function(total) {
-            locals.countMovieReleases720p = 0;
-            locals.countMovieReleases1080p = 0;
-            locals.countShowReleases720p = 0;
-            locals.countShowReleases1080p = 0;
+    const total = await db.getReleasesCount();
 
-            locals.countUnverifiedMovieReleases = 0;
-            locals.countUnverifiedShowReleases = 0;
+    locals.countMovieReleases720p = 0;
+    locals.countMovieReleases1080p = 0;
+    locals.countShowReleases720p = 0;
+    locals.countShowReleases1080p = 0;
 
-            _.each(total, function(subTotal) {
-                if (subTotal._id.type == 'movie') {
-                    if (subTotal._id.quality == '720p') {
-                        locals.countMovieReleases720p += subTotal.count;
-                    } else {
-                        locals.countMovieReleases1080p += subTotal.count;
-                    }
+    locals.countUnverifiedMovieReleases = 0;
+    locals.countUnverifiedShowReleases = 0;
 
-                    if (subTotal._id.isVerified === false) {
-                        locals.countUnverifiedMovieReleases += subTotal.count;
-                    }
-                } else {
-                    if (subTotal._id.quality == '720p') {
-                        locals.countShowReleases720p += subTotal.count;
-                    } else {
-                        locals.countShowReleases1080p += subTotal.count;
-                    }
+    _.each(total, function(subTotal) {
+        if (subTotal._id.type == 'movie') {
+            if (subTotal._id.quality == '720p') {
+                locals.countMovieReleases720p += subTotal.count;
+            } else {
+                locals.countMovieReleases1080p += subTotal.count;
+            }
 
-                    if (!subTotal._id.isVerified) {
-                        locals.countUnverifiedShowReleases += subTotal.count;
-                    }
-                }
-            });
+            if (subTotal._id.isVerified === false) {
+                locals.countUnverifiedMovieReleases += subTotal.count;
+            }
+        } else {
+            if (subTotal._id.quality == '720p') {
+                locals.countShowReleases720p += subTotal.count;
+            } else {
+                locals.countShowReleases1080p += subTotal.count;
+            }
 
-            return db.getUnverifiedShowsCount();
-        })
-        .then(function(total) {
-            locals.countUnverifiedShows = total;
-            return next();
-        });
+            if (!subTotal._id.isVerified) {
+                locals.countUnverifiedShowReleases += subTotal.count;
+            }
+        }
+    });
+
+    const total = await db.getUnverifiedShowsCount();
+
+    locals.countUnverifiedShows = total;
+
+    next();
 }
 
 module.exports = function(app) {
@@ -80,12 +79,12 @@ module.exports = function(app) {
     });
 
     app.post('/login', function(req, res) {
-        var post = req.body;
+        const post = req.body;
 
         if (post.inputUser === 'admin' && post.inputPassword === req.app.locals.settings.adminPassword) {
             req.session.user_id = post.inputUser;
 
-            var redirectTo = req.session.redirectTo ? req.session.redirectTo : '/';
+            const redirectTo = req.session.redirectTo ? req.session.redirectTo : '/';
             delete req.session.redirectTo;
 
             res.redirect(redirectTo);
@@ -106,26 +105,25 @@ module.exports = function(app) {
     // **************************************************
     // status
     // **************************************************
-    app.get('(/|/status)', getLayoutData, function(req, res) {
+    app.get('(/|/status)', getLayoutData, async function(req, res) {
         if (!req.url.endsWith('/')) {
             req.url += '/';
             res.redirect(req.url);
         } else {
-            var db = req.app.locals.db;
+            const db = req.app.locals.db;
 
-            db.getMemoryUsage()
-                .then(function(memoryUsage) {
-                    res.render('status', {
-                        title: 'Status',
-                        isAuthed: !!req.session.user_id,
-                        memoryUsage: memoryUsage
-                    });
-                });
+            const memoryUsage = await db.getMemoryUsage();
+
+            res.render('status', {
+                title: 'Status',
+                isAuthed: !!req.session.user_id,
+                memoryUsage: memoryUsage
+            });
         }
     });
 
     app.get('/memory', function(req, res) {
-        var data = {
+        const data = {
             x: req.app.locals.moment().tz('Europe/Lisbon').valueOf(),
             y: process.memoryUsage().rss / 1048576
         }

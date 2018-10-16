@@ -1,19 +1,29 @@
 'use strict';
 
-var Promise = require('bluebird');
-var MongoDB = Promise.promisifyAll(require('mongodb'));
+const debug = require('debug')('DB');
+const Promise = require('bluebird');
+const MongoDB = Promise.promisifyAll(require('mongodb'));
 
-var settings = require('./settings.js');
+const settings = require('./settings.js');
 
-var db;
+let db;
 
 module.exports = {
     // **************************************************
     // initialize
     // **************************************************
     initialize: async function() {
+        await this.connect();
+        db.on('close', this.connect);
+    },
+
+    connect: async function() {
+        debug('connecting to the db...');
+
         const client = await MongoDB.MongoClient.connectAsync('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
         db = client.db(settings.MONGODB_DATABASE);
+        
+        debug('connected');
     },
 
     // **************************************************
