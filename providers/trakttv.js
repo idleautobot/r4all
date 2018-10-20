@@ -65,7 +65,7 @@ const TraktTv = {
                 extended: 'episodes'
             });
 
-            for (let s = 0; res && s < res.length; s++) {
+            for (let s = 0; res instanceof Array && s < res.length; s++) {
                 for (let ep = 0; res[s].episodes && ep < res[s].episodes.length; ep++) {
                     const season = res[s].episodes[ep].season;
                     const episode = res[s].episodes[ep].number;
@@ -74,12 +74,14 @@ const TraktTv = {
                         extended: 'full'
                     });
 
-                    episodes[episodeInfo.season] = episodes[season] || {};
-                    episodes[episodeInfo.season][episodeInfo.number] = {
-                        title: episodeInfo.title,
-                        aired: new Date(episodeInfo.first_aired),
-                        overview: episodeInfo.overview
-                    };
+                    if ('season' in episodeInfo) {
+                        episodes[episodeInfo.season] = episodes[season] || {};
+                        episodes[episodeInfo.season][episodeInfo.number] = {
+                            title: episodeInfo.title,
+                            aired: new Date(episodeInfo.first_aired),
+                            overview: episodeInfo.overview
+                        };
+                    }
                 }
             }
 
@@ -126,7 +128,7 @@ function get(endpoint, getVariables) {
         }, function(error, response, body) {
             if (error) {
                 reject(error);
-            } else if (response.statusCode >= 400) {
+            } else if (response.statusCode >= 400 && response.statusCode != 404) {
                 reject(response.statusCode + ': ' + STATUS_CODES[response.statusCode]);
             } else {
                 let res = {};
