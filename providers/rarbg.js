@@ -200,7 +200,10 @@ async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) 
             const release = releases[index];
 
             await loadTorrentPage(page, release.tid, currRun, instance);
-            release.magnet = await pageLoadedHandler(page, RARBG_PAGES.torrent);
+            const result = await pageLoadedHandler(page, RARBG_PAGES.torrent);
+
+            release.magnet = result.magnet;
+            release.noSuchTorrent = result.noSuchTorrent;
 
             index++;
         } catch (err) {
@@ -279,10 +282,9 @@ async function pageLoadedHandler(page, expectedPage, io, attempt = 0) {
             // fetchMagnet
         case RARBG_PAGES.torrent:
             const magnet = await getTorrentMagnet(page);
-            return magnet;
+            return { magnet: magnet };
         case RARBG_PAGES.noSuchTorrent:
-            debug('no such torrent...');
-            return null;
+            return { magnet: null, noSuchTorrent: true };
 
             // other landing pages
         case RARBG_PAGES.verifying:

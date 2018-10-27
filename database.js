@@ -6,23 +6,30 @@ const MongoDB = Promise.promisifyAll(require('mongodb'));
 
 const settings = require('./settings.js');
 
-let db;
+let db = null;
 
-module.exports = {
+async function databaseHandler(...args) {
+    const method = args.shift();
+
+    if (db === null) await database.init();
+
+    return await database[method](...args);
+};
+
+const database = {
     // **************************************************
     // initialize
     // **************************************************
-    initialize: async function() {
-        await this.connect();
-        db.on('close', this.connect);
-    },
-
-    connect: async function() {
+    init: async function() {
         debug('connecting to the db...');
 
         const client = await MongoDB.MongoClient.connectAsync('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
         db = client.db(settings.MONGODB_DATABASE);
-        
+
+        db.on('close', function() {
+            db = null;
+        });
+
         debug('connected');
     },
 
@@ -300,7 +307,7 @@ module.exports = {
 
     upsertRelease: async function(release) {
         delete release.page;
-        await db.collection('releases').updateOneAsync({ _id: release._id }, { $set: release }, { upsert: true });
+        await db.collection('releases').updateOneAsync({ _id: release._id }, { $set: release, $currentDate: { updatedOn: true } }, { upsert: true });
     },
 
     upsertIMDb: async function(imdbInfo) {
@@ -313,6 +320,17 @@ module.exports = {
     // **************************************************
     // database maintenance
     // **************************************************
+    getReleaseOutdated: async function() {
+        const docs = await db.collection('releases').aggregate([
+            { magnet: { $ne: null } },
+            { $sort: { updatedOn: 1 } },
+            { $limit: 1 },
+            { $project: { tid: 1 } }
+        ]).toArrayAsync();
+
+        return docs[0];
+    },
+
     getIMDbOutdated: async function() {
         const docs = await db.collection('imdb').aggregate([
             { $sort: { updatedOn: 1 } },
@@ -321,6 +339,13 @@ module.exports = {
         ]).toArrayAsync();
 
         return docs[0];
+    },
+
+    // **************************************************
+    // remove
+    // **************************************************
+    removeRelease: async function(release) {
+        await db.collection('releases').removeAsync({ _id: release._id });
     },
 
     // **************************************************
@@ -878,11 +903,78 @@ module.exports = {
 
     //     return collection.aggregateAsync(pipeline);
     // },
+};
+
+module.exports = {
+    // **************************************************
+    // get
+    // **************************************************
+    getBootstrap: async function(...args) {
+        return await databaseHandler(this.getBootstrap.name, ...args);
+    },
+
+    getLastRelease: async function(...args) {
+        return await databaseHandler(this.getLastRelease.name, ...args);
+    },
+
+    getReleasesWithoutMagnetLink: async function(...args) {
+        return await databaseHandler(this.getReleasesWithoutMagnetLink.name, ...args);
+    },
+
+    getReleasesToVerify: async function(...args) {
+        return await databaseHandler(this.getReleasesToVerify.name, ...args);
+    },
+
+    getLastEpisode: async function(...args) {
+        return await databaseHandler(this.getLastEpisode.name, ...args);
+    },
 
     // **************************************************
-    // disconnecting
+    // upsert
     // **************************************************
-    end: function() {
-        db.close();
+    upsertBootstrap: async function(...args) {
+        return await databaseHandler(this.upsertBootstrap.name, ...args);
+    },
+
+    upsertRelease: async function(...args) {
+        return await databaseHandler(this.upsertRelease.name, ...args);
+    },
+
+    upsertIMDb: async function(...args) {
+        return await databaseHandler(this.upsertIMDb.name, ...args);
+    },
+
+    // **************************************************
+    // remove
+    // **************************************************
+    removeRelease: async function(...args) {
+        return await databaseHandler(this.removeRelease.name, ...args);
+    },
+
+    // **************************************************
+    // database maintenance
+    // **************************************************
+    getReleaseOutdated: async function(...args) {
+        return await databaseHandler(this.getReleaseOutdated.name, ...args);
+    },
+
+    getIMDbOutdated: async function(...args) {
+        return await databaseHandler(this.getIMDbOutdated.name, ...args);
+    },
+
+    // **************************************************
+    // memory
+    // **************************************************
+    insertMemoryUsage: async function(...args) {
+        return await databaseHandler(this.insertMemoryUsage.name, ...args);
+    },
+
+    getMemoryUsage: async function(...args) {
+        return await databaseHandler(this.getMemoryUsage.name, ...args);
+    },
+
+    // status
+    isOn: function() {
+        return db !== null;
     }
 };

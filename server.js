@@ -63,12 +63,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 require('./routes')(app);
 
 async function memoryUsage() {
-    var data = {
+    const db = app.locals.db;
+    const data = {
         date: app.locals.moment().tz('Europe/Lisbon').toDate(),
         rss: process.memoryUsage().rss
     };
 
-    await app.locals.db.insertMemoryUsage(data);
+    await db.insertMemoryUsage(data);
     setTimeout(memoryUsage, 15 * 60 * 1000);
 }
 
@@ -76,15 +77,15 @@ process.setMaxListeners(Infinity);
 process.on('warning', e => console.warn(e.stack));
 
 (async function initApp(isProduction) {
-    try {
-        await app.locals.db.initialize();
+    const core = app.locals.core;
 
+    try {
         if (isProduction) memoryUsage();
 
         http.createServer(app).listen(app.get('port'), app.get('ip'), function() {
             debug('express server listening on port ' + app.get('port'));
 
-            if (isProduction) app.locals.core.refresh();
+            if (isProduction) core.refresh();
         });
     } catch (err) {
         console.log(err);

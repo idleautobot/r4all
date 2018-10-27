@@ -37,6 +37,8 @@ const Core = {
 
             await verifyReleases();
 
+            await refreshReleaseOutdated();
+
             await refreshIMDbOutdated();
 
             imdbList.clear();
@@ -238,6 +240,8 @@ async function setReleasesMagnetLink() {
             };
 
             await db.upsertRelease(r);
+        } else if (release.noSuchTorrent) {
+            await db.removeRelease(r);
         }
     }
 }
@@ -260,9 +264,11 @@ async function verifyReleases() {
 }
 
 async function verifyMovie(release) {
+    const imdb = providers.imdb;
+
     let imdbInfo = imdbList.get(release.imdbId);
 
-    if (!imdbInfo) imdbInfo = await providers.imdb.fetch(release.imdbId, release.type);
+    if (!imdbInfo) imdbInfo = await imdb.fetch(release.imdbId, release.type);
     if (!imdbInfo) return;
 
     const parsed = oleoo.parse(release.name, { strict: true });
@@ -312,9 +318,11 @@ async function verifyMovie(release) {
 }
 
 async function verifyShow(release) {
+    const imdb = providers.imdb;
+
     let imdbInfo = imdbList.get(release.imdbId);
 
-    if (!imdbInfo) imdbInfo = await providers.imdb.fetch(release.imdbId, release.type);
+    if (!imdbInfo) imdbInfo = await imdb.fetch(release.imdbId, release.type);
     if (!imdbInfo) return;
 
     const pubdateProperty = 'pubdate' + release.quality;
@@ -346,13 +354,36 @@ async function verifyShow(release) {
 // **************************************************
 // database maintenance
 // **************************************************
+async function refreshReleaseOutdated() {
+    debug('refreshing Releases data...');
+
+    const rarbg = providers.rarbg;
+    const release = await db.getReleaseOutdated();
+
+    if (release) {
+        try { await rarbg.fetchMagnet([release]); } catch (err) {}
+
+        if (release.magnet) {
+            const r = {
+                _id: release._id,
+                magnet: release.magnet
+            };
+
+            await db.upsertRelease(r);
+        } else if (release.noSuchTorrent) {
+            await db.removeRelease(r);
+        }
+    }
+}
+
 async function refreshIMDbOutdated() {
     debug('refreshing IMDb data...');
 
+    const imdb = providers.imdb;
     const doc = await db.getIMDbOutdated();
 
     if (doc) {
-        const imdbInfo = await providers.imdb.fetch(doc._id, doc.type);
+        const imdbInfo = await imdb.fetch(doc._id, doc.type);
         imdbInfo && await db.upsertIMDb(imdbInfo);
     }
 }
