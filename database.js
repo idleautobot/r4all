@@ -318,6 +318,13 @@ const database = {
     },
 
     // **************************************************
+    // remove
+    // **************************************************
+    removeRelease: async function(release) {
+        await db.collection('releases').removeAsync({ _id: release._id });
+    },
+
+    // **************************************************
     // database maintenance
     // **************************************************
     getReleaseOutdated: async function() {
@@ -339,13 +346,6 @@ const database = {
         ]).toArrayAsync();
 
         return docs[0];
-    },
-
-    // **************************************************
-    // remove
-    // **************************************************
-    removeRelease: async function(release) {
-        await db.collection('releases').removeAsync({ _id: release._id });
     },
 
     // **************************************************
@@ -973,7 +973,9 @@ module.exports = {
         return await databaseHandler(this.getMemoryUsage.name, ...args);
     },
 
+    // **************************************************
     // status
+    // **************************************************
     isOn: function() {
         return db !== null;
     }
