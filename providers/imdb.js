@@ -178,6 +178,7 @@ async function fetchInfo(page, imdbId) {
 
             info._id = regex($('link[href^="https://www.imdb.com/title/"]').attr('href'), /https:\/\/www\.imdb\.com\/title\/(tt\d+)/i);
             info.title = $('#title-overview-widget .title_wrapper h1').contents().filter(function() { return this.nodeType == 3; }).text().trim();
+            info.titleParent = $('.titleParent').length;
 
             if ($('#title-episode-widget').length) {
                 info.type = 'show';
@@ -212,17 +213,19 @@ async function fetchInfo(page, imdbId) {
     const imdbInfo = result.imdbInfo;
 
     if (result.successful) {
-        // data validation
-        if (!imdbInfo._id || !imdbInfo.title || !imdbInfo.year) {
-            return null;
-        }
+        if (!imdbInfo.titleParent) {
+            // data validation
+            if (!imdbInfo._id || !imdbInfo.title || !imdbInfo.year) {
+                return null;
+            }
 
-        if (imdbInfo.type == 'movie') {
-            imdbInfo.akas = await fetchAKAs(page, imdbInfo._id);
-        } else {
-            imdbInfo.episodes = await trakttv.fetchEpisodes(imdbInfo._id);
+            if (imdbInfo.type == 'movie') {
+                imdbInfo.akas = await fetchAKAs(page, imdbInfo._id);
+            } else {
+                imdbInfo.episodes = await trakttv.fetchEpisodes(imdbInfo._id);
 
-            if (imdbInfo.episodes == null) return null;
+                if (imdbInfo.episodes == null) return null;
+            }
         }
     } else {
         throw new Error(result.error);
