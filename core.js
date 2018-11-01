@@ -273,7 +273,7 @@ async function verifyMovie(release) {
 
     let validated = false;
 
-    if (!info.titleParent) {
+    if (!imdbInfo.titleParent) {
         const parsed = oleoo.parse(release.name, { strict: true });
 
         // Movie Title check
@@ -331,7 +331,7 @@ async function verifyShow(release) {
 
     let validated = false;
 
-    if (!info.titleParent) {
+    if (!imdbInfo.titleParent) {
         const pubdateProperty = 'pubdate' + release.quality;
         let isNewEpisode;
 
