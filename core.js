@@ -233,12 +233,12 @@ async function setReleasesMagnetLink() {
     try { await rarbg.fetchMagnet(releases); } catch (err) {}
 
     for (const release of releases) {
-        if (release.magnet) {
-            const r = {
-                _id: release._id,
-                magnet: release.magnet
-            };
+        const r = {
+            _id: release._id,
+            magnet: release.magnet
+        };
 
+        if (r.magnet) {
             await db.upsertRelease(r);
         } else if (release.noSuchTorrent) {
             await db.removeRelease(r);
