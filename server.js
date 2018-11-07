@@ -77,9 +77,12 @@ process.setMaxListeners(Infinity);
 process.on('warning', e => console.warn(e.stack));
 
 (async function initApp(isProduction) {
+    const db = app.locals.db;
     const core = app.locals.core;
 
     try {
+        db.init();
+
         if (isProduction) memoryUsage();
 
         http.createServer(app).listen(app.get('port'), app.get('ip'), function() {

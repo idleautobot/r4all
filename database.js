@@ -12,6 +12,7 @@ async function databaseHandler(...args) {
     const method = args.shift();
 
     if (db === null) await database.init();
+    if (method == 'init') return;
 
     return await database[method](...args);
 };
@@ -906,6 +907,13 @@ const database = {
 };
 
 module.exports = {
+    // **************************************************
+    // init
+    // **************************************************
+    init: async function(...args) {
+        return await databaseHandler(this.getBootstrap.name, ...args);
+    },
+
     // **************************************************
     // get
     // **************************************************
