@@ -81,7 +81,7 @@ process.on('warning', e => console.warn(e.stack));
     const core = app.locals.core;
 
     try {
-        db.init();
+        await db.init();
 
         if (isProduction) memoryUsage();
 
