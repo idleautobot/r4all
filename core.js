@@ -366,7 +366,7 @@ async function verifyShow(release) {
 // database maintenance
 // **************************************************
 async function refreshReleaseOutdated() {
-    debug('refreshing Releases data...');
+    debug('refreshing releases data...');
 
     const rarbg = providers.rarbg;
     const release = await db.getReleaseOutdated();

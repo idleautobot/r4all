@@ -329,7 +329,7 @@ const database = {
     // **************************************************
     getReleaseOutdated: async function() {
         const docs = await db.collection('releases').aggregate([
-            { magnet: { $ne: null } },
+            { $match: { magnet: { $ne: null } } },
             { $sort: { updatedOn: 1 } },
             { $limit: 1 },
             { $project: { tid: 1 } }
