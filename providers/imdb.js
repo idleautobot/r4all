@@ -88,6 +88,7 @@ async function fetch(resolve, imdbId, type) {
         [imdbInfo, mdbInfo, trakttvInfo] = [await imdbInfo, await mdbInfo, await trakttvInfo];
 
         if (!imdbInfo) {
+            try { await browser.close(); } catch (err) {}
             resolve(null);
             return;
         }
