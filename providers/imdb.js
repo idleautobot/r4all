@@ -179,30 +179,34 @@ async function fetchInfo(page, imdbId) {
 
             info._id = regex($('link[href^="https://www.imdb.com/title/"]').attr('href'), /https:\/\/www\.imdb\.com\/title\/(tt\d+)/i);
             info.title = $('#title-overview-widget .title_wrapper h1').contents().filter(function() { return this.nodeType == 3; }).text().trim();
-            info.titleParent = $('.titleParent').length;
+            info.isMainTitle = !$('.titleParent').length;
 
-            if ($('#title-episode-widget').length) {
-                info.type = 'show';
-                info.year = Math.min.apply(Math, $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?year="]').map(function() { return parseInt($(this).text()) || null; }).get());
-                const seasons = $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?season="]').map(function() { return parseInt($(this).text()) || null; }).get();
-                info.numSeasons = Math.max.apply(Math, seasons);
+            if (info.isMainTitle) {
+                if ($('.np_episode_guide').length) {
+                    info.type = 'show';
+                    info.year = parseInt(regex($('#title-overview-widget .title_wrapper a[href^="/title/' + info._id + '/releaseinfo"]').text().trim(), /.*?(\d{4})/));
+                    const seasons = $('#title-episode-widget a[href^="/title/' + info._id + '/episodes?season="]').map(function() { return parseInt($(this).text()) || null; }).get();
+                    info.numSeasons = (seasons.length ? Math.max.apply(Math, seasons) : null);
+                } else {
+                    info.type = 'movie';
+                    info.year = parseInt($('#titleYear > a').text());
+                }
+
+                info.rating = parseFloat($('#title-overview-widget [itemprop="ratingValue"]').text()) || null;
+                info.votes = parseFloat($('#title-overview-widget [itemprop="ratingCount"]').text().replace(/,/g, '')) || null;
+                info.runtime = getRuntime($('#title-overview-widget time').text().trim()) || null;
+                info.genres = $('#title-overview-widget a[href^="/search/title?genres"]').map(function() { return $(this).text().trim(); }).get();
+                info.plot = $('#title-overview-widget .summary_text').contents().filter(function() { return this.nodeType == 3 && $(this).text().trim() != '»'; }).text().trim();
+
+                const cover = $('#title-overview-widget .poster img').attr('src');
+                if (cover && cover.indexOf('media-amazon.com') !== -1) {
+                    info.cover = cover.replace(/_V1.*?\.jpg/i, '_V1._SY0.jpg');
+                }
+
+                info.trailer = $('#title-overview-widget a[href^="/video/imdb/"]').attr('data-video') || null;
             } else {
-                info.type = 'movie';
-                info.year = parseInt($('#titleYear > a').text());
+                info.titleParentId = regex($('.titleParent a[href^="/title/').attr('href'), /\/title\/(tt\d+)/i);
             }
-
-            info.rating = parseFloat($('#title-overview-widget [itemprop="ratingValue"]').text());
-            info.votes = parseFloat($('#title-overview-widget [itemprop="ratingCount"]').text().replace(/,/g, ''));
-            info.runtime = getRuntime($('#title-overview-widget time').text().trim());
-            info.genres = $('#title-overview-widget a[href^="/genre/"]').map(function() { return $(this).text(); }).get();
-            info.plot = $('#title-overview-widget .summary_text').text().trim();
-
-            const cover = $('#title-overview-widget .poster img').attr('src');
-            if (cover && cover.indexOf('media-amazon.com') !== -1) {
-                info.cover = cover.replace(/_V1.*?\.jpg/i, '_V1._SY0.jpg');
-            }
-
-            info.trailer = $('#title-overview-widget a[href^="/video/imdb/"]').attr('data-video');
         } catch (err) {
             result.successful = false;
             result.error = err.stack;
@@ -214,7 +218,7 @@ async function fetchInfo(page, imdbId) {
     const imdbInfo = result.imdbInfo;
 
     if (result.successful) {
-        if (!imdbInfo.titleParent) {
+        if (imdbInfo.isMainTitle) {
             // data validation
             if (!imdbInfo._id || !imdbInfo.title || !imdbInfo.year) {
                 return null;
@@ -227,6 +231,8 @@ async function fetchInfo(page, imdbId) {
 
                 if (imdbInfo.episodes == null) return null;
             }
+        } else {
+            return await fetchInfo(page, imdbInfo.titleParentId);
         }
     } else {
         throw new Error(result.error);

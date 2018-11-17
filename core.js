@@ -273,42 +273,40 @@ async function verifyMovie(release) {
 
     let validated = false;
 
-    if (!imdbInfo.titleParent) {
-        const parsed = oleoo.parse(release.name, { strict: true });
+    const parsed = oleoo.parse(release.name, { strict: true });
 
-        // Movie Title check
-        const releaseTitle = parsed.title.replace(/-/g, '.').replace(/ /g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
-        let movieTitleEncoded = common.scene.titleEncode(imdbInfo.title).toUpperCase(); // encode imdb movie title
+    // Movie Title check
+    const releaseTitle = parsed.title.replace(/-/g, '.').replace(/ /g, '.').toUpperCase(); // fix: replace allowed character '-' with dot - some releases replace with dot
+    let movieTitleEncoded = common.scene.titleEncode(imdbInfo.title).toUpperCase(); // encode imdb movie title
 
-        if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare movie title
-            validated = true;
-        } else {
-            if (imdbInfo.akas) {
-                imdbInfo.akas.some(function(aka) {
-                    movieTitleEncoded = common.scene.titleEncode(aka).toUpperCase();
+    if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare movie title
+        validated = true;
+    } else {
+        if (imdbInfo.akas) {
+            imdbInfo.akas.some(function(aka) {
+                movieTitleEncoded = common.scene.titleEncode(aka).toUpperCase();
 
-                    if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare aka movie title
-                        imdbInfo.aka = aka;
-                        validated = true;
-                        return true;
-                    }
+                if (movieTitleEncoded !== '' && (releaseTitle.indexOf(movieTitleEncoded) !== -1 || movieTitleEncoded.indexOf(releaseTitle) !== -1)) { // compare aka movie title
+                    imdbInfo.aka = aka;
+                    validated = true;
+                    return true;
+                }
 
-                    return false;
-                });
-            }
+                return false;
+            });
         }
-
-        // Year && Type check
-        validated = validated && (imdbInfo.year == parseInt(parsed.year));
-
-        const pubdateProperty = 'pubdate' + release.quality;
-
-        if (release[pubdateProperty] == null) {
-            imdbInfo[pubdateProperty] = release.pubdate;
-        }
-
-        await db.upsertIMDb(imdbInfo);
     }
+
+    // Year && Type check
+    validated = validated && (imdbInfo.year == parseInt(parsed.year));
+
+    const pubdateProperty = 'pubdate' + release.quality;
+
+    if (release[pubdateProperty] == null) {
+        imdbInfo[pubdateProperty] = release.pubdate;
+    }
+
+    await db.upsertIMDb(imdbInfo);
 
     imdbList.add(imdbInfo);
 
@@ -331,25 +329,23 @@ async function verifyShow(release) {
 
     let validated = false;
 
-    if (!imdbInfo.titleParent) {
-        const pubdateProperty = 'pubdate' + release.quality;
-        let isNewEpisode;
+    const pubdateProperty = 'pubdate' + release.quality;
+    let isNewEpisode;
 
-        if (release[pubdateProperty] == null) {
-            isNewEpisode = true;
-        } else {
-            const lastEpisode = await db.getLastEpisode(imdbInfo._id, release.quality);
-            isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episode) > lastEpisode.episode);
-        }
-
-        validated = true;
-
-        if (isNewEpisode) {
-            imdbInfo[pubdateProperty] = release.pubdate;
-        }
-
-        await db.upsertIMDb(imdbInfo);
+    if (release[pubdateProperty] == null) {
+        isNewEpisode = true;
+    } else {
+        const lastEpisode = await db.getLastEpisode(imdbInfo._id, release.quality);
+        isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episode) > lastEpisode.episode);
     }
+
+    validated = true;
+
+    if (isNewEpisode) {
+        imdbInfo[pubdateProperty] = release.pubdate;
+    }
+
+    await db.upsertIMDb(imdbInfo);
 
     imdbList.add(imdbInfo);
 
