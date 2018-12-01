@@ -128,6 +128,9 @@ const Core = {
     },
     isOn: function() {
         return status;
+    },
+    refreshCount: function() {
+        return refreshCount;
     }
 };
 

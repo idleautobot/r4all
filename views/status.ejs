@@ -9,7 +9,7 @@
 </style>
 
 <div class="row text-center">
-    <h2 style="margin-bottom: 40px;"><kbd>Uptime: <%= moment.duration(moment().tz('Europe/Lisbon').diff(startupTime)).humanize() %> <small style="color: white;">Booted on <%= startupTime.format('DD/MM/YYYY HH:mm:ss') %></small></kbd></h2>
+    <h2 style="margin-bottom: 40px;"><kbd>Uptime: <%= moment.duration(moment().diff(startupTime)).humanize() %> <small style="color: white;">Booted on <%= startupTime.tz('Europe/Lisbon').format('DD/MM/YYYY HH:mm:ss') %></small></kbd></h2>
 </div>
 
 <div class="row">
@@ -26,14 +26,15 @@
             </div>
 
             <div class="list-group">
-                <li class="list-group-item"><b>Core</b>: <%= core.refreshes.toLocaleString() %> <%= core.refreshes == 1 ? 'refresh' : 'refreshes' %> <%= core.lastRefresh ? '(' + moment.duration(moment().diff(core.lastRefresh)).humanize() + ' ago)' : '' %><span class="glyphicon glyphicon-off pull-right <%= core.isOn ? 'isOn' : 'isOff' %>"></span></li>
+                <li class="list-group-item"><b>Core</b>: <%= core.refreshCount().toLocaleString() %> <%= core.refreshCount() == 1 ? 'refresh' : 'refreshes' %> <%= core.lastRefresh ? '(' + moment.duration(moment().diff(core.lastRefresh)).humanize() + ' ago)' : '' %><span class="glyphicon glyphicon-off pull-right <%= core.isOn ? 'isOn' : 'isOff' %>"></span></li>
                 
-                <a href="<%= providers.rarbg.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/rarbg-favicon.ico"> RARBG »<span class="glyphicon glyphicon-off pull-right <%= providers.rarbg.isOn ? 'isOn' : 'isOff' %>"></span></a>
-                <a href="<%= providers.imdb.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/imdb-favicon.ico" width="16"> IMDb »<span class="glyphicon glyphicon-off pull-right <%= providers.imdb.isOn ? 'isOn' : 'isOff' %>"></span></a>
-                <a href="<%= providers.trakttv.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/trakttv-favicon.ico" width="16"> TraktTv »<span class="glyphicon glyphicon-off pull-right <%= providers.trakttv.isOn ? 'isOn' : 'isOff' %>"></span></a>
-                <a href="<%= providers.themoviedb.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/themoviedb-favicon.ico" width="16"> The Movie Database »<span class="glyphicon glyphicon-off pull-right <%= providers.themoviedb.isOn ? 'isOn' : 'isOff' %>"></span></a>
-                <a href="<%= providers.addic7ed.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/addic7ed-favicon.ico"> Addic7ed »<span class="glyphicon glyphicon-off pull-right <%= providers.addic7ed.isOn ? 'isOn' : 'isOff' %>"></span></a>
-                <a href="<%= providers.legendasdivx.URL.toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/legendasdivx-favicon.ico"> LegendasDivx »<span class="glyphicon glyphicon-off pull-right <%= providers.legendasdivx.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.freeproxylists.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/freeproxylists-favicon.ico"> FreeProxyLists »<span class="glyphicon glyphicon-off pull-right <%= providers.freeproxylists.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.rarbg.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/rarbg-favicon.ico"> RARBG »<span class="glyphicon glyphicon-off pull-right <%= providers.rarbg.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.imdb.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/imdb-favicon.ico" width="16"> IMDb »<span class="glyphicon glyphicon-off pull-right <%= providers.imdb.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.trakttv.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/trakttv-favicon.ico" width="16"> TraktTv »<span class="glyphicon glyphicon-off pull-right <%= providers.trakttv.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.themoviedb.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/themoviedb-favicon.ico" width="16"> The Movie Database »<span class="glyphicon glyphicon-off pull-right <%= providers.themoviedb.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.addic7ed.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/addic7ed-favicon.ico"> Addic7ed »<span class="glyphicon glyphicon-off pull-right <%= providers.addic7ed.isOn ? 'isOn' : 'isOff' %>"></span></a>
+                <a href="<%= providers.legendasdivx.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/legendasdivx-favicon.ico"> LegendasDivx »<span class="glyphicon glyphicon-off pull-right <%= providers.legendasdivx.isOn ? 'isOn' : 'isOff' %>"></span></a>
             </div>
         </div>
     </div>
@@ -45,12 +46,6 @@
 
 <script>
 $(function() {
-    Highcharts.setOptions({
-        global: {
-            useUTC: false
-        }
-    });
-
     // Create the chart
     $('#memory').highcharts('StockChart', {
         chart: {
@@ -99,8 +94,7 @@ $(function() {
         tooltip: {
             xDateFormat: '%Y-%m-%d %H:%M',
             valueDecimals: 2,
-            valueSuffix: 'M',
-            shared: true
+            valueSuffix: 'M'
         },
 
         yAxis: {
@@ -111,8 +105,7 @@ $(function() {
         
         series: [{
             name: 'rss',
-            data: <%- JSON.stringify(memoryUsage) %>,
-            turboThreshold: 0
+            data: <%- JSON.stringify(memoryUsage) %>
         }]
     });
 });

@@ -52,6 +52,10 @@ const RARBG = {
     getURL: function() {
         return URL;
     },
+    getTorrentURL: function(tid) {
+        return TORRENT_URL
+            .expand({ tid: tid });
+    },
     isOn: function() {
         return status;
     }

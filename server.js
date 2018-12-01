@@ -16,18 +16,19 @@ var session = require('express-session');
 var app = express();
 
 // set express locals
-app.locals.startupTime = require('moment-timezone')().tz('Europe/Lisbon');
+app.locals.startupTime = require('moment')();
 app.locals.settings = require('./settings.js');
 app.locals.common = require('./common.js');
 app.locals.db = require('./database.js');
 app.locals.core = require('./core.js');
 app.locals.providers = {
+    freeproxylists: require('./providers/freeproxylists.js'),
     rarbg: require('./providers/rarbg.js'),
     imdb: require('./providers/imdb.js'),
-    //trakttv: require('./providers/trakttv.js'),
-    //themoviedb: require('./providers/themoviedb.js'),
-    //addic7ed: require('./providers/addic7ed.js'),
-    //legendasdivx: require('./providers/legendasdivx.js')
+    trakttv: require('./providers/trakttv.js'),
+    themoviedb: require('./providers/themoviedb.js'),
+    addic7ed: require('./providers/addic7ed.js'),
+    legendasdivx: require('./providers/legendasdivx.js')
 };
 app.locals._ = require('lodash');
 app.locals.moment = require('moment-timezone');

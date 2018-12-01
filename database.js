@@ -127,131 +127,119 @@ const database = {
     //             return docs[0];
     //         });
     // },
+
     // **************************************************
     // get - dashboard
     // **************************************************
-    // getReleases: function(view, page, param) {
-    //     var match;
+    getReleasesCount: async function() {
+        return await db.collection('releases').aggregate({
+            $group: {
+                _id: {
+                    type: '$type',
+                    quality: '$quality',
+                    isVerified: '$isVerified'
+                },
+                count: { $sum: 1 }
+            }
+        }, {
+            $project: {
+                _id: 1,
+                count: 1
+            }
+        }).toArrayAsync();
+    },
 
-    //     page = page || 1;
+    getUnverifiedShowsCount: async function() {
+        return await db.collection('imdb').countDocumentsAsync({ type: 'show', isVerified: false });
+    },
 
-    //     var pipeline = [{
-    //         $sort: { date: -1 }
-    //     }, {
-    //         $skip: (page - 1) * settings.dashboardPageRecords
-    //     }, {
-    //         $limit: settings.dashboardPageRecords + 1
-    //     }, {
-    //         $lookup: {
-    //             from: 'imdb',
-    //             localField: 'imdbId',
-    //             foreignField: '_id',
-    //             as: 'imdb'
-    //         }
-    //     }, {
-    //         $lookup: {
-    //             from: 'shows',
-    //             localField: 'showId',
-    //             foreignField: '_id',
-    //             as: 'show'
-    //         }
-    //     }, {
-    //         $unwind: {
-    //             path: '$imdb',
-    //             preserveNullAndEmptyArrays: true
-    //         }
-    //     }, {
-    //         $unwind: {
-    //             path: '$show',
-    //             preserveNullAndEmptyArrays: true
-    //         }
-    //     }, {
-    //         $project: {
-    //             name: 1,
-    //             category: 1,
-    //             date: 1,
-    //             imdbId: 1,
-    //             nfo: 1,
-    //             ddlvalley: 1,
-    //             rlsbb: 1,
-    //             twoddl: 1,
-    //             isVerified: 1,
-    //             torrentProvider: 1,
-    //             torrentId: 1,
-    //             torrentName: 1,
-    //             magnetLink: 1,
-    //             subtitleId: 1,
-    //             'imdb.title': 1,
-    //             'imdb.aka': 1,
-    //             'imdb.numSeasons': 1,
-    //             'imdb.year': 1,
-    //             'imdb.plot': 1,
-    //             'imdb.genres': 1,
-    //             'imdb.runtime': 1,
-    //             'imdb.rating': 1,
-    //             'imdb.votes': 1,
-    //             'imdb.cover': 1,
-    //             'imdb.trailer': 1,
-    //             'imdb.state': 1,
-    //             'show.addic7edId': 1
-    //         }
-    //     }];
+    getReleases: async function(view, page, param) {
+        var match;
 
-    //     switch (view) {
-    //         case 'releases':
-    //             break;
-    //         case 'movies':
-    //             match = {
-    //                 $match: {
-    //                     $or: [{
-    //                         category: 'm720p'
-    //                     }, {
-    //                         category: 'm1080p'
-    //                     }]
-    //                 }
-    //             };
-    //             break;
-    //         case 'movies-720p':
-    //             match = { $match: { category: 'm720p' } };
-    //             break;
-    //         case 'movies-1080p':
-    //             match = { $match: { category: 'm1080p' } };
-    //             break;
-    //         case 'tv-shows':
-    //             match = { $match: { category: 's720p' } };
-    //             break;
-    //         case 'imdb':
-    //             match = { $match: { imdbId: param } };
-    //             break;
-    //         case 'show':
-    //             var r = new RegExp('^' + param + '$', 'i');
+        page = page || 1;
 
-    //             match = {
-    //                 $match: {
-    //                     category: 's720p',
-    //                     showId: { $regex: r }
-    //                 }
-    //             };
-    //             break;
-    //         case 'search':
-    //             var r = new RegExp('.*' + param + '.*', 'i');
-    //             match = { $match: { name: { $regex: r } } };
-    //             break;
-    //         default:
-    //             match = { $match: { category: view } };
-    //             break;
-    //     }
+        var pipeline = [{
+            $sort: { pubdate: -1 }
+        }, {
+            $skip: (page - 1) * settings.dashboardPageRecords
+        }, {
+            $limit: settings.dashboardPageRecords + 1
+        }, {
+            $lookup: {
+                from: 'imdb',
+                localField: 'imdbId',
+                foreignField: '_id',
+                as: 'imdb'
+            }
+        }, {
+            $unwind: {
+                path: '$imdb',
+                preserveNullAndEmptyArrays: true
+            }
+        }, {
+            $project: {
+                name: 1,
+                type: 1,
+                quality: 1,
+                pubdate: 1,
+                imdbId: 1,
+                isVerified: 1,
+                tid: 1,
+                magnet: 1,
+                subtitleId: 1,
+                'imdb.title': 1,
+                'imdb.aka': 1,
+                'imdb.type': 1,
+                'imdb.numSeasons': 1,
+                'imdb.year': 1,
+                'imdb.plot': 1,
+                'imdb.genres': 1,
+                'imdb.runtime': 1,
+                'imdb.rating': 1,
+                'imdb.votes': 1,
+                'imdb.cover': 1,
+                'imdb.trailer': 1,
+                'imdb.state': 1,
+                'imdb.addic7edId': 1
+            }
+        }];
 
-    //     match && pipeline.unshift(match);
+        switch (view) {
+            case 'releases':
+                break;
+            case 'movies':
+                match = { $match: { type: 'movie' } };
+                break;
+            case 'movies-720p':
+                match = { $match: { type: 'movie', quality: '720p' } };
+                break;
+            case 'movies-1080p':
+                match = { $match: { type: 'movie', quality: '1080p' } };
+                break;
+            case 'tv-shows':
+                match = { $match: { type: 'show' } };
+                break;
+            case 'tv-shows-720p':
+                match = { $match: { type: 'show', quality: '720p' } };
+                break;
+            case 'tv-shows-1080p':
+                match = { $match: { type: 'show', quality: '1080p' } };
+                break;
+            case 'imdb':
+                match = { $match: { imdbId: param } };
+                break;
+            case 'search':
+                const r = new RegExp('.*' + param + '.*', 'i');
+                match = { $match: { name: { $regex: r } } };
+                break;
+            default:
+                break;
+        }
 
-    //     return db.collection('releases').aggregateAsync(pipeline);
-    // },
+        match && pipeline.unshift(match);
 
-    // getShow: function(s) {
-    //     var r = new RegExp('^' + s + '$', 'i');
-
-    //     return db.collection('shows').find({ _id: { $regex: r } }, { _id: 1 }).limit(1).nextAsync();
-    // },
+        return await db.collection('releases').aggregate(pipeline).toArrayAsync();
+    },
 
 
 
@@ -279,23 +267,6 @@ const database = {
 
     // getUnverifiedShows: function() {
     //     return db.collection('imdb').find({ type: 'show', isVerified: false }).sort({ title: 1 }).toArrayAsync();
-    // },
-
-    // getReleasesCount: function() {
-    //     return db.collection('releases').aggregateAsync({
-    //         $group: {
-    //             _id: {
-    //                 type: '$type',
-    //                 quality: '$quality',
-    //                 isVerified: '$isVerified'
-    //             },
-    //             count: { $sum: 1 }
-    //         }
-    //     });
-    // },
-
-    // getUnverifiedShowsCount: function() {
-    //     return db.collection('imdb').countAsync({ type: 'show', isVerified: false });
     // },
 
     // **************************************************
@@ -369,60 +340,60 @@ const database = {
     },
 
     // **************************************************
-    // api ## final projections review...
+    // api
     // **************************************************
-    // getFeed: function(filters) {
-    //     var pipeline = [];
+    getFeed: async function(filters) {
+        var pipeline = [];
 
-    //     // fetch magnetLink && subtitleId
-    //     if (filters.ids) {
-    //         filters.ids = [].concat(filters.ids);
-    //         pipeline.push({ $match: { _id: { $in: filters.ids } } });
-    //     } else { // fetch new releases
-    //         // from
-    //         filters.from = parseInt(filters.from);
-    //         filters.from = new Date(filters.from ? filters.from : '1970-01-01');
+        // fetch magnetLink && subtitleId
+        if (filters.ids) {
+            filters.ids = [].concat(filters.ids);
+            pipeline.push({ $match: { _id: { $in: filters.ids } } });
+        } else { // fetch new releases
+            // from
+            filters.from = parseInt(filters.from);
+            filters.from = new Date(filters.from ? filters.from : '1970-01-01');
 
-    //         pipeline.push({ $match: { verifiedOn: { $gt: filters.from } } });
+            pipeline.push({ $match: { verifiedOn: { $gt: filters.from } } });
 
-    //         // category
-    //         if (filters.quality && (filters.quality == '720p' || filters.quality == '1080p')) {
-    //             pipeline.push({ $match: { $or: [{ category: 'm' + filters.quality }, { category: 's720p' }] } });
-    //         }
+            // category
+            if (filters.quality && (filters.quality == '720p' || filters.quality == '1080p')) {
+                pipeline.push({ $match: { $or: [{ category: 'm' + filters.quality }, { category: 's720p' }] } });
+            }
 
-    //         pipeline.push({ $sort: { date: 1 } });
-    //     }
+            pipeline.push({ $sort: { date: 1 } });
+        }
 
-    //     pipeline.push({
-    //         $lookup: {
-    //             from: 'imdb',
-    //             localField: 'imdbId',
-    //             foreignField: '_id',
-    //             as: 'imdb'
-    //         }
-    //     }, {
-    //         $unwind: '$imdb'
-    //     }, {
-    //         $project: {
-    //             name: 1,
-    //             parsed: 1,
-    //             category: 1,
-    //             imdbId: 1,
-    //             verifiedOn: 1,
-    //             magnetLink: 1,
-    //             subtitleId: 1,
-    //             title: '$imdb.title',
-    //             type: '$imdb.type',
-    //             numSeasons: '$imdb.numSeasons',
-    //             year: '$imdb.year',
-    //             rating: '$imdb.rating',
-    //             votes: '$imdb.votes',
-    //             cover: '$imdb.cover'
-    //         }
-    //     });
+        pipeline.push({
+            $lookup: {
+                from: 'imdb',
+                localField: 'imdbId',
+                foreignField: '_id',
+                as: 'imdb'
+            }
+        }, {
+            $unwind: '$imdb'
+        }, {
+            $project: {
+                name: 1,
+                parsed: 1,
+                category: 1,
+                imdbId: 1,
+                verifiedOn: 1,
+                magnetLink: 1,
+                subtitleId: 1,
+                title: '$imdb.title',
+                type: '$imdb.type',
+                numSeasons: '$imdb.numSeasons',
+                year: '$imdb.year',
+                rating: '$imdb.rating',
+                votes: '$imdb.votes',
+                cover: '$imdb.cover'
+            }
+        });
 
-    //     return db.collection('releases').aggregateAsync(pipeline);
-    // },
+        return await db.collection('releases').aggregateAsync(pipeline);
+    },
 
     // getAppView: function(filters) {
     //     switch (filters.view) {
@@ -935,6 +906,21 @@ module.exports = {
 
     getLastEpisode: async function(...args) {
         return await databaseHandler(this.getLastEpisode.name, ...args);
+    },
+
+    // **************************************************
+    // get - dashboard
+    // **************************************************
+    getReleasesCount: async function(...args) {
+        return await databaseHandler(this.getReleasesCount.name, ...args);
+    },
+
+    getUnverifiedShowsCount: async function(...args) {
+        return await databaseHandler(this.getUnverifiedShowsCount.name, ...args);
+    },
+
+    getReleases: async function(...args) {
+        return await databaseHandler(this.getReleases.name, ...args);
     },
 
     // **************************************************

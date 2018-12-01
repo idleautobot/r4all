@@ -20,7 +20,7 @@
     "lodash": "^4.17.11",
     "moment": "^2.22.2",
     "moment-timezone": "^0.5.21",
-    "mongodb": "^3.1.6",
+    "mongodb": "^3.1.10",
     "morgan": "^1.9.1",
     "moviedb": "^0.2.10",
     "oleoo": "github:idleautobot/oleoo#97cd0d4782e24b7468b9ca0a26789f55f91d22c3",

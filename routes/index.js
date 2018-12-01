@@ -1,6 +1,5 @@
 'use strict';
 
-const Promise = require('bluebird');
 const _ = require('lodash');
 
 function checkAuth(req, res, next) {
@@ -24,7 +23,7 @@ async function getLayoutData(req, res, next) {
     locals.countShowReleases1080p = 0;
 
     locals.countUnverifiedMovieReleases = 0;
-    locals.countUnverifiedShowReleases = 0;
+    locals.countUnverifiedShows = 0;
 
     _.each(total, function(subTotal) {
         if (subTotal._id.type == 'movie') {
@@ -43,16 +42,10 @@ async function getLayoutData(req, res, next) {
             } else {
                 locals.countShowReleases1080p += subTotal.count;
             }
-
-            if (!subTotal._id.isVerified) {
-                locals.countUnverifiedShowReleases += subTotal.count;
-            }
         }
     });
 
-    const total = await db.getUnverifiedShowsCount();
-
-    locals.countUnverifiedShows = total;
+    locals.countUnverifiedShows = await db.getUnverifiedShowsCount();
 
     next();
 }
@@ -124,7 +117,7 @@ module.exports = function(app) {
 
     app.get('/memory', function(req, res) {
         const data = {
-            x: req.app.locals.moment().tz('Europe/Lisbon').valueOf(),
+            x: req.app.locals.moment().valueOf(),
             y: process.memoryUsage().rss / 1048576
         }
 
@@ -157,64 +150,9 @@ module.exports = function(app) {
     app.use('/log', require('./log.js')(getLayoutData));
 
     // **************************************************
-    // upsert release/show & delete release
+    // upsert show
     // **************************************************
-    app.put('/release', checkAuth, function(req, res) {
-        var db = req.app.locals.db;
-        var imdb = req.app.locals.providers.imdb;
-        var release = req.body;
-
-        if (release._id && (!release.imdbId || release.imdbId.match(/^tt\d+$/))) {
-            Promise.resolve(release.imdbId)
-                .then(function(imdbId) {
-                    if (!imdbId) {
-                        return;
-                    } else {
-                        return imdb.fetchInfo(release.imdbId)
-                            .then(function(imdbInfo) {
-                                if (!imdbInfo) throw 'Unable to fetch imdb info.';
-
-                                release.imdbId = imdbInfo._id; // because of imdb redirects
-
-                                return db.upsertIMDb(imdbInfo);
-                            });
-                    }
-                })
-                .then(function() {
-                    if (typeof release.isVerified != 'undefined') {
-                        release.isVerified = parseInt(release.isVerified) || 0;
-                    }
-
-                    return db.upsertRelease(release);
-                })
-                .then(function() {
-                    res.status(200).send();
-                })
-                .catch(function(err) {
-                    res.status(400).send(err);
-                });
-        } else {
-            res.status(400).send('Invalid data.');
-        }
-    });
-
-    app.delete('/release', checkAuth, function(req, res) {
-        var db = req.app.locals.db;
-        var release = req.body;
-
-        if (release._id) {
-            Promise.resolve(db.removeRelease(release))
-                .then(function() {
-                    res.status(200).send();
-                })
-                .catch(function(err) {
-                    res.status(400).send(err);
-                });
-        } else {
-            res.status(400).send('Invalid data.');
-        }
-    });
-
+    // ###
     app.put('/show', checkAuth, function(req, res) {
         var db = req.app.locals.db;
         var imdb = req.app.locals.providers.imdb;
@@ -253,17 +191,16 @@ module.exports = function(app) {
     // **************************************************
     // subtitle download interface
     // **************************************************
-    app.get('/subtitle/*', function(req, res) {
-        var common = req.app.locals.common;
-        var addic7ed = req.app.locals.providers.addic7ed;
-        var subtitle = common.rem(/^\/subtitle\/(.+?)(\/.+)$/i, req.path);
+    app.get('/subtitle/*', async function(req, res) {
+        const common = req.app.locals.common;
+        const addic7ed = req.app.locals.providers.addic7ed;
+        const subtitle = common.regex(/^\/subtitle\/(.+?)(\/.+)$/i, req.path);
 
         if (subtitle) {
-            addic7ed.download(subtitle[1])
-                .then(function(s) {
-                    res.attachment(subtitle[0] + '.srt');
-                    res.send(s);
-                });
+            const s = await addic7ed.download(subtitle[1]);
+
+            res.attachment(subtitle[0] + '.srt');
+            res.send(s);
         } else {
             res.status(400).send('Invalid subtitle.');
         }

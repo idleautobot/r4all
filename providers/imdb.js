@@ -44,8 +44,9 @@ const IMDb = {
     getURL: function() {
         return URL;
     },
-    getTitleURL: function() {
-        return TITLE_URL;
+    getTitleURL: function(imdbId) {
+        return TITLE_URL
+            .expand({ imdbId: imdbId });
     },
     isOn: function() {
         return status;
