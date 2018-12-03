@@ -6,37 +6,31 @@ const router = express.Router();
 // **************************************************
 // app feed
 // **************************************************
-router.post('/feed', function (req, res) {
-    var db = req.app.locals.db;
+router.get('/feed', async function (req, res) {
+    const db = req.app.locals.db;
 
-    db.getFeed(req.body)
-        .then(function (releases) {
-            res.json(releases);
-        });
+    const releases = await db.getFeed(req.query);
+    res.json(releases);
 });
 
 // **************************************************
 // app views
 // **************************************************
-router.post(/\/view\/(feed|movies|shows|imdb|detail)$/, function (req, res) {
-    var db = req.app.locals.db;
+router.post(/\/view\/(feed|movies|shows|imdb|detail)$/, async function (req, res) {
+    const db = req.app.locals.db;
 
-    db.getAppView(req.body)
-        .then(function (releases) {
-            res.json(releases);
-        });
+    const releases = await db.getAppView(req.body)
+    res.json(releases);
 });
 
 // **************************************************
 // get showList
 // **************************************************
-router.get('/shows', function (req, res) {
-    var db = req.app.locals.db;
+router.get('/shows', async function (req, res) {
+    const db = req.app.locals.db;
 
-    db.getShowList()
-        .then(function (shows) {
-            res.json(shows);
-        });
+    const shows = await db.getShowList();
+    res.json(shows);
 });
 
 // **************************************************

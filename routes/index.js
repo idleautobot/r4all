@@ -145,41 +145,53 @@ module.exports = function(app) {
     app.use('/verify', require('./verify.js')(checkAuth, getLayoutData));
 
     // **************************************************
-    // log
-    // **************************************************
-    app.use('/log', require('./log.js')(getLayoutData));
-
-    // **************************************************
     // upsert show
     // **************************************************
-    // ###
-    app.put('/show', checkAuth, function(req, res) {
-        var db = req.app.locals.db;
-        var imdb = req.app.locals.providers.imdb;
-        var show = req.body;
+    app.put('/release', checkAuth, async function(req, res) {
+        const db = req.app.locals.db;
+        const imdb = req.app.locals.providers.imdb;
+        const release = req.body;
 
-        if (show._id && show.folder && show.imdbId && show.imdbId.match(/^tt\d+$/) && (!show.addic7edId || show.addic7edId.match(/^\d+$/))) {
-            imdb.fetchInfo(show.imdbId)
-                .then(function(imdbInfo) {
-                    if (!imdbInfo) throw 'Unable to fetch imdb info.';
+        try {
+            if (release._id && release.imdbId.match(/^tt\d+$/)) {
+                const imdbInfo = await imdb.fetch(release.imdbId, 'movie');
+                if (!imdbInfo) throw 'Unable to fetch imdb info.';
 
-                    show.imdbId = imdbInfo._id; // because of imdb redirects
-
-                    return db.upsertIMDb(imdbInfo);
-                })
-                .then(function() {
-                    show.addic7edId = parseInt(show.addic7edId) || '';
-                    show.isVerified = parseInt(show.isVerified) || 0;
-                    return db.upsertShow(show);
-                })
-                .then(function() {
-                    res.status(200).send();
-                })
-                .catch(function(err) {
-                    res.status(400).send(err);
+                await db.upsertIMDb(imdbInfo);
+                await db.upsertRelease({
+                    _id: release._id,
+                    imdbId: imdbInfo._id, // because of imdb redirects
+                    isVerified: true
                 });
-        } else {
-            res.status(400).send('Invalid data.');
+
+                res.status(200).send();
+            } else {
+                res.status(400).send('Invalid data.');
+            }
+        } catch (err) {
+            res.status(500).send(err);
+        }
+    });
+
+    app.put('/show', checkAuth, async function(req, res) {
+        const db = req.app.locals.db;
+        const showInfo = req.body;
+
+        try {
+            if (showInfo._id && showInfo.folder && (!showInfo.addic7edId || showInfo.addic7edId.match(/^\d+$/))) {
+                await db.upsertIMDb({
+                    _id: showInfo._id,
+                    folder: showInfo.folder,
+                    addic7edId: parseInt(showInfo.addic7edId) || 0,
+                    isVerified: true
+                });
+
+                res.status(200).send();
+            } else {
+                res.status(400).send('Invalid data.');
+            }
+        } catch (err) {
+            res.status(500).send(err);
         }
     });
 

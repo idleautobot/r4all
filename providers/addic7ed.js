@@ -11,13 +11,16 @@ const common = require('../common.js');
 const URL = URI('http://www.addic7ed.com');
 const SHOW_LIST_URL = URL.clone().segment('/shows.php');
 const SHOW_EPISODE_URL = URITemplate(URL.toString() + '/re_episode.php?ep={addic7edId}-{season}x{episode}');
-const SHOW_URL = URITemplate(URL.toString() + 'show/{addic7edId}?langs=|1|');
+const SHOW_URL = URITemplate(URL.toString() + 'show/{addic7edId}?langs=%7C1%7C');
 
 let status = true;
 
 const Addic7ed = {
     getURL: function() {
         return URL;
+    },
+    getShowListURL: function() {
+        return SHOW_LIST_URL;
     },
     getShowURL: function(addic7edId) {
         return SHOW_URL

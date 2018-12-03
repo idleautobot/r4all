@@ -65,11 +65,8 @@
                     </ul>
                 </ul>
                 <ul class="nav nav-sidebar">
-                    <li class="<%= title == 'Verify Movies' ? 'active' : '' %>"><a href="/verify/movies/"><span class="glyphicon glyphicon-check"></span>&ensp;Verify Movies <span class="label label-pill label-danger pull-right"><%= countUnverifiedMovieReleases.toLocaleString() %></span></a></li>
+                    <li class="<%= title == 'Verify Movie Releases' ? 'active' : '' %>"><a href="/verify/moviereleases/"><span class="glyphicon glyphicon-check"></span>&ensp;Verify Movie Releases <span class="label label-pill label-danger pull-right"><%= countUnverifiedMovieReleases.toLocaleString() %></span></a></li>
                     <li class="<%= title == 'Verify Shows' ? 'active' : '' %>"><a href="/verify/shows/"><span class="glyphicon glyphicon-check"></span>&ensp;Verify Shows <span class="label label-pill label-danger pull-right"><%= countUnverifiedShows.toLocaleString() %></span></a></li>
-                </ul>
-                <ul class="nav nav-sidebar">
-                    <li class="<%= title == 'Log' ? 'active' : '' %>"><a href="/log/"><span class="glyphicon glyphicon-console"></span>&ensp;Log</a></li>
                 </ul>
             </div>
             <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">

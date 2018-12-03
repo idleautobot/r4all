@@ -88,7 +88,7 @@ const database = {
     },
 
     getLastEpisode: async function(imdbId, quality) {
-        return await db.collection('releases').aggregate([{
+        const lastEpisode = await db.collection('releases').aggregate([{
             $match: { imdbId: imdbId, quality: quality, isVerified: true }
         }, {
             $unwind: {
@@ -104,6 +104,8 @@ const database = {
                 episode: 1
             }
         }]).toArrayAsync();
+        
+        return lastEpisode[0];
     },
 
     // getReleaseSubtitle: async function(releaseId) {
@@ -229,7 +231,7 @@ const database = {
                 match = { $match: { imdbId: param } };
                 break;
             case 'search':
-                const r = new RegExp('.*' + param + '.*', 'i');
+                const r = new RegExp('.*' + param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '.*', 'i');
                 match = { $match: { name: { $regex: r } } };
                 break;
             default:
@@ -241,33 +243,27 @@ const database = {
         return await db.collection('releases').aggregate(pipeline).toArrayAsync();
     },
 
+    getUnverifiedMovies: async function() {
+        return await db.collection('releases').find({
+            type: 'movie',
+            isVerified: false
+        }, {
+            name: 1,
+            imdbId: 1
+        }).sort({ name: 1 }).toArrayAsync();
+    },
 
-
-
-
-
-
-    //TODO******************************************************************************************************************
-    // getUnverifiedMovies: function() {
-    //     return db.collection('releases').find({
-    //         isVerified: 0,
-    //         $or: [{
-    //             category: 'm720p'
-    //         }, {
-    //             category: 'm1080p'
-    //         }]
-    //     }, {
-    //         name: 1,
-    //         imdbId: 1,
-    //         ddlvalley: 1,
-    //         rlsbb: 1,
-    //         twoddl: 1,
-    //     }).sort({ name: 1 }).toArrayAsync();
-    // },
-
-    // getUnverifiedShows: function() {
-    //     return db.collection('imdb').find({ type: 'show', isVerified: false }).sort({ title: 1 }).toArrayAsync();
-    // },
+    getUnverifiedShows: async function() {
+        return await db.collection('imdb').find({
+            type: 'show',
+            isVerified: false
+        }, {
+            title: 1,
+            year: 1,
+            folder: 1,
+            addic7edId: 1
+        }).sort({ title: 1 }).toArrayAsync();
+    },
 
     // **************************************************
     // upsert
@@ -343,56 +339,36 @@ const database = {
     // api
     // **************************************************
     getFeed: async function(filters) {
-        var pipeline = [];
+        const pipeline = [];
+        let pubdate;
 
-        // fetch magnetLink && subtitleId
-        if (filters.ids) {
-            filters.ids = [].concat(filters.ids);
-            pipeline.push({ $match: { _id: { $in: filters.ids } } });
-        } else { // fetch new releases
-            // from
-            filters.from = parseInt(filters.from);
-            filters.from = new Date(filters.from ? filters.from : '1970-01-01');
+        filters.from = parseInt(filters.from);
+        filters.from = new Date(filters.from ? filters.from : '1970-01-01');
 
-            pipeline.push({ $match: { verifiedOn: { $gt: filters.from } } });
-
-            // category
-            if (filters.quality && (filters.quality == '720p' || filters.quality == '1080p')) {
-                pipeline.push({ $match: { $or: [{ category: 'm' + filters.quality }, { category: 's720p' }] } });
-            }
-
-            pipeline.push({ $sort: { date: 1 } });
+        if (filters.quality === '720p') {
+            pipeline.push({ $match: { pubdate720p: { $gt: filters.from } } });
+            pubdate = '$pubdate720p';
+        } else if (filters.quality === '1080p') {
+            pipeline.push({ $match: { pubdate1080p: { $gt: filters.from } } });
+            pubdate = '$pubdate1080p';
+        } else {
+            pipeline.push({ $match: { $or: [{ pubdate720p: { $gt: filters.from } }, { pubdate1080p: { $gt: filters.from } }] } });
+            pubdate = { $cond: [{ $lt: ['$pubdate720p', '$pubdate1080p'] }, '$pubdate720p', '$pubdate1080p'] };
         }
 
         pipeline.push({
-            $lookup: {
-                from: 'imdb',
-                localField: 'imdbId',
-                foreignField: '_id',
-                as: 'imdb'
+            $project: {
+                title: 1,
+                type: 1,
+                pubdate: pubdate
             }
         }, {
-            $unwind: '$imdb'
-        }, {
-            $project: {
-                name: 1,
-                parsed: 1,
-                category: 1,
-                imdbId: 1,
-                verifiedOn: 1,
-                magnetLink: 1,
-                subtitleId: 1,
-                title: '$imdb.title',
-                type: '$imdb.type',
-                numSeasons: '$imdb.numSeasons',
-                year: '$imdb.year',
-                rating: '$imdb.rating',
-                votes: '$imdb.votes',
-                cover: '$imdb.cover'
+            $sort: {
+                pubdate: 1
             }
         });
 
-        return await db.collection('releases').aggregateAsync(pipeline);
+        return await db.collection('imdb').aggregate(pipeline).toArrayAsync();
     },
 
     // getAppView: function(filters) {
@@ -923,6 +899,14 @@ module.exports = {
         return await databaseHandler(this.getReleases.name, ...args);
     },
 
+    getUnverifiedMovies: async function(...args) {
+        return await databaseHandler(this.getUnverifiedMovies.name, ...args);
+    },
+
+    getUnverifiedShows: async function(...args) {
+        return await databaseHandler(this.getUnverifiedShows.name, ...args);
+    },
+
     // **************************************************
     // upsert
     // **************************************************
@@ -965,6 +949,13 @@ module.exports = {
 
     getMemoryUsage: async function(...args) {
         return await databaseHandler(this.getMemoryUsage.name, ...args);
+    },
+
+    // **************************************************
+    // api
+    // **************************************************
+    getFeed: async function(...args) {
+        return await databaseHandler(this.getFeed.name, ...args);
     },
 
     // **************************************************

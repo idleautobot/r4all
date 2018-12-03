@@ -13,9 +13,8 @@ const db = require('./database.js');
 const providers = {
     rarbg: require('./providers/rarbg.js'),
     imdb: require('./providers/imdb.js'),
-    //###
-    //addic7ed: require('./providers/addic7ed.js'),
-    //legendasdivx: require('./providers/legendasdivx.js')
+    addic7ed: require('./providers/addic7ed.js'),
+    legendasdivx: require('./providers/legendasdivx.js')
 };
 
 let status = false;

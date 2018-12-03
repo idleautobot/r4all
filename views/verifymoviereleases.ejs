@@ -23,29 +23,23 @@
 	                <th class="text-center">Release</th>
 	                <th class="text-center">IMDb</th>
 	                <th class="text-center">Verify</th>
-	                <th class="text-center">Remove</th>
 	            </tr>
 	        </thead>
 	        <tbody>
 	        	<% _.each(toVerify, function(release) { %>
 		            <tr id="<%= release._id %>" data-name="<%= release.name %>" class="unverifiedRelease">
-		                <th class="vert-align text-center" scope="row">
+		                <td class="vert-align text-center" scope="row">
 		                	<a href="/search/<%= release.name %>" target="_blank"><%= release.name %></a>
-		                </th>
+		                </td>
 		                <td class="vert-align text-center">
 							<div class="input-group">
 								<input type="text" value="<%= release.imdbId %>" class="form-control rIMDbId">
-								<a class="input-group-addon" href="<%= release.imdbId ? providers.imdb.TITLE_URL.replace(/\{imdbId\}/, release.imdbId) : providers.imdb.URL %>" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
+								<a class="input-group-addon" href="<%= release.imdbId ? providers.imdb.getTitleURL(release.imdbId).toString() : providers.imdb.getURL() %>" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
 							</div>
 						</td>
 		                <td class="vert-align text-center">
 							<button type="button" class="btn btn-success btn-sm rUpdate">
 								<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
-							</button>
-		                </td>
-		                <td class="vert-align text-center">
-							<button type="button" class="btn btn-danger btn-sm rDelete">
-								<span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
 							</button>
 		                </td>
 		            </tr>
@@ -60,24 +54,24 @@
 <script>
 $(function() {
 	$('.rIMDbId').change(function() {
-		var imdbId = $(this).val();
-		$(this).next('a').attr('href', imdbId ? '<%= providers.imdb.TITLE_URL %>'.replace(/\{imdbId\}/, imdbId) : '<%= providers.imdb.URL %>');
+		const imdbId = $(this).val();
+		$(this).next('a').attr('href', imdbId ? '<%= providers.imdb.getTitleURL('{imdbId}').toString() %>'.replace(/%7BimdbId%7D/, imdbId) : '<%= providers.imdb.getURL() %>');
 	});
 
 	$('.rUpdate').on('click', function() {
-		var releaseSel = $(this).closest('.unverifiedRelease');
+		const releaseSel = $(this).closest('.unverifiedRelease');
 
-		var release = {
+		const release = {
 			_id: $(releaseSel).attr('id'),
-			imdbId: $(releaseSel).find('.rIMDbId').val(),
-			isVerified: 1
+			imdbId: $(releaseSel).find('.rIMDbId').val()
 		};
 		
-		if(release._id && release.imdbId && release.imdbId.match(/^tt\d+$/)) {
+		if(release._id && release.imdbId.trim() != '' && release.imdbId.match(/^tt\d+$/)) {
 			$.ajax({
 				url: '/release',
 				type: 'PUT',
-				data: release,
+				contentType: 'application/json',
+				data: JSON.stringify(release),
 				success: function() {
 					$(releaseSel).find('input, button').prop('disabled', true).parent().removeClass('has-error');
 					$('<div class="alert alert-success alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Well Done!</strong> ' + releaseSel.attr('data-name') + ' release updated!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
@@ -89,38 +83,9 @@ $(function() {
 				}
 			});
 		} else {
-			(!release.imdbId || !release.imdbId.match(/^tt\d+$/)) && $(releaseSel).find('.rIMDbId').parent().addClass('has-error');
+			(release.imdbId.trim() == '' || !release.imdbId.match(/^tt\d+$/)) && $(releaseSel).find('.rIMDbId').parent().addClass('has-error');
 
 			$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Oh snap!</strong> Fill it properly!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
-		        $(this).remove();
-		    });
-		}
-	});
-
-	$('.rDelete').on('click', function() {
-		var releaseSel = $(this).closest('.unverifiedRelease');
-
-		var release = {
-			_id: $(releaseSel).attr('id')
-		};
-		
-		if(release._id) {
-			$.ajax({
-				url: '/release',
-				type: 'DELETE',
-				data: release,
-				success: function() {
-					$(releaseSel).find('input, button').prop('disabled', true).parent().removeClass('has-error');
-					$('<div class="alert alert-success alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Well Done!</strong> ' + releaseSel.attr('data-name') + ' release deleted!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
-				        $(this).remove();
-				    });
-				},
-				error: function(err) {
-					$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>' + err.responseText + '</div>').prependTo('#notifications').fadeIn('fast');
-				}
-			});
-		} else {
-			$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Oh snap!</strong> Something\'s wrong!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
 		        $(this).remove();
 		    });
 		}

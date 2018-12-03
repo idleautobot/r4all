@@ -105,7 +105,8 @@ $(function() {
         
         series: [{
             name: 'rss',
-            data: <%- JSON.stringify(memoryUsage) %>
+            data: <%- JSON.stringify(memoryUsage) %>,
+            turboThreshold: 0
         }]
     });
 });

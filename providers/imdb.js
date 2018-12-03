@@ -220,6 +220,8 @@ async function fetchInfo(page, imdbId) {
 
     if (result.successful) {
         if (imdbInfo.isMainTitle) {
+            delete imdbInfo.isMainTitle;
+
             // data validation
             if (!imdbInfo._id || !imdbInfo.title || !imdbInfo.year) {
                 return null;

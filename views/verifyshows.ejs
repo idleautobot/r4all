@@ -20,21 +20,25 @@
 	    <table class="table table-bordered">
 	        <thead>
 	            <tr>
-	                <th class="text-center">IMDb</th>
+					<th class="text-center">Title</th>		
+					<th class="text-center">Folder</th>
 	                <th class="text-center">Addic7ed</th>
 	                <th class="text-center">Verify</th>
 	            </tr>
 	        </thead>
 	        <tbody>
-	        	<% _.each(toVerify, function(imdb) { %>
-		            <tr id="<%= imdb._id %>" class="unverifiedShow">
+	        	<% _.each(toVerify, function(show) { %>
+		            <tr id="<%= show._id %>" class="unverifiedShow">
 		                <td class="vert-align text-center" scope="row">
-		                	<a href="<%= providers.imdb.TITLE_URL.expand({ imdbId: imdb._id }).toString() %>/" target="_blank"><%= imdb.title %></a>
+		                	<a href="<%= providers.imdb.getTitleURL(show._id).toString() %>" target="_blank"><%= show.title + ' (' + show.year + ')' %></a>
 		                </td>
 		                <td class="vert-align text-center">
+		                	<input type="text" value="<%= show.folder %>" class="form-control sFolder" />
+						</td>
+		                <td class="vert-align text-center">
 							<div class="input-group">
-								<input type="text" value="<%= imdb.addic7edId %>" class="form-control sAddic7edId">
-								<a class="input-group-addon" href="<%= imdb.addic7edId ? providers.addic7ed.SHOW_URL.expand({ addic7edId: imdb.addic7edId }).toString() : providers.addic7ed.SHOW_LIST_URL.toString() %>" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
+								<input type="text" value="<%= show.addic7edId %>" class="form-control sAddic7edId">
+								<a class="input-group-addon" href="<%= show.addic7edId ? providers.addic7ed.getShowURL(show.addic7edId).toString() : providers.addic7ed.getShowListURL().toString() %>" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
 							</div>
 						</td>
 		                <td class="vert-align text-center">
@@ -54,27 +58,28 @@
 <script>
 $(function() {
 	$('.sAddic7edId').change(function() {
-		var addic7edId = $(this).val();
-		$(this).next('a').attr('href', addic7edId ? '<%= providers.addic7ed.SHOW_URL.toString() %>'.replace(/\{addic7edId\}/, addic7edId) : '<%= providers.addic7ed.SHOW_LIST_URL.toString() %>');
+		const addic7edId = $(this).val();
+		$(this).next('a').attr('href', addic7edId ? '<%= providers.addic7ed.getShowURL('{addic7edId}').toString() %>'.replace(/%7Baddic7edId%7D/, addic7edId) : '<%= providers.addic7ed.getShowListURL().toString() %>');
 	});
 
 	$('.sUpdate').on('click', function() {
-		var showSel = $(this).closest('.unverifiedShow');
+		const showSel = $(this).closest('.unverifiedShow');
 
-		var imdbInfo = {
+		const show = {
 			_id: $(showSel).attr('id'),
-			addic7edId: $(showSel).find('.sAddic7edId').val(),
-			isVerified: 1
+			folder: $(showSel).find('.sFolder').val(),
+			addic7edId: $(showSel).find('.sAddic7edId').val()
 		};
 		
-		if(imdbInfo._id && (!imdbInfo.addic7edId || imdbInfo.addic7edId.match(/^\d+$/))) {
+		if(show._id && show.folder.trim() != '' && (show.addic7edId.trim() == '' || show.addic7edId.match(/^\d+$/))) {
 			$.ajax({
 				url: '/show',
 				type: 'PUT',
-				data: imdbInfo,
+				contentType: 'application/json',
+				data: JSON.stringify(show),
 				success: function() {
 					$(showSel).find('input, button').prop('disabled', true).parent().removeClass('has-error');
-					$('<div class="alert alert-success alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Well Done!</strong> ' + imdbInfo._id + ' show updated!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
+					$('<div class="alert alert-success alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Well Done!</strong> ' + show._id + ' show updated!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
 				        $(this).remove();
 				    });
 				},
@@ -83,7 +88,8 @@ $(function() {
 				}
 			});
 		} else {
-			(imdbInfo.addic7edId && !imdbInfo.addic7edId.match(/^\d+$/)) && $(showSel).find('.sAddic7edId').parent().addClass('has-error');
+			show.folder.trim() == '' && $(showSel).find('.sFolder').parent().addClass('has-error');
+			(show.addic7edId.trim() != '' && !show.addic7edId.match(/^\d+$/)) && $(showSel).find('.sAddic7edId').parent().addClass('has-error');
 
 			$('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Oh snap!</strong> Fill it properly!</div>').prependTo('#notifications').fadeIn('fast').delay(10000).fadeOut('fast', function () {
 		        $(this).remove();
