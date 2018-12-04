@@ -104,7 +104,7 @@ const database = {
                 episode: 1
             }
         }]).toArrayAsync();
-        
+
         return lastEpisode[0];
     },
 
@@ -339,36 +339,48 @@ const database = {
     // api
     // **************************************************
     getFeed: async function(filters) {
-        const pipeline = [];
-        let pubdate;
+        let movieQualityFilter, showQualityFilter, moviePubdateProjection, showPubdateProjection;
 
-        filters.from = parseInt(filters.from);
-        filters.from = new Date(filters.from ? filters.from : '1970-01-01');
+        let feedFrom = new Date(filters.from);
+        feedFrom = (!isNaN(feedFrom) && feedFrom) || new Date('1970-01-01');
 
-        if (filters.quality === '720p') {
-            pipeline.push({ $match: { pubdate720p: { $gt: filters.from } } });
-            pubdate = '$pubdate720p';
-        } else if (filters.quality === '1080p') {
-            pipeline.push({ $match: { pubdate1080p: { $gt: filters.from } } });
-            pubdate = '$pubdate1080p';
+        if (filters.mquality === '1080p') {
+            movieQualityFilter = { pubdate720p: { $gt: feedFrom } };
+            moviePubdateProjection = '$pubdate1080p';
         } else {
-            pipeline.push({ $match: { $or: [{ pubdate720p: { $gt: filters.from } }, { pubdate1080p: { $gt: filters.from } }] } });
-            pubdate = { $cond: [{ $lt: ['$pubdate720p', '$pubdate1080p'] }, '$pubdate720p', '$pubdate1080p'] };
+            movieQualityFilter = { pubdate1080p: { $gt: feedFrom } };
+            moviePubdateProjection = '$pubdate720p';
         }
 
-        pipeline.push({
+        if (filters.mquality === '1080p') {
+            showQualityFilter = { pubdate720p: { $gt: feedFrom } };
+            showPubdateProjection = '$pubdate1080p';
+        } else {
+            showQualityFilter = { pubdate1080p: { $gt: feedFrom } };
+            showPubdateProjection = '$pubdate720p';
+        }
+
+        return await db.collection('imdb').aggregate({
+            $match: {
+                $or: [{
+                    $and: [{ type: 'movie' }, movieQualityFilter]
+                }, {
+                    $and: [{ type: 'show' }, showQualityFilter]
+                }]
+            }
+        }, {
             $project: {
                 title: 1,
                 type: 1,
-                pubdate: pubdate
+                pubdate: {
+                    $cond: [{ $eq: ["$type", 'movie'] }, moviePubdateProjection, showPubdateProjection]
+                }
             }
         }, {
             $sort: {
                 pubdate: 1
             }
-        });
-
-        return await db.collection('imdb').aggregate(pipeline).toArrayAsync();
+        }).toArrayAsync();
     },
 
     // getAppView: function(filters) {
