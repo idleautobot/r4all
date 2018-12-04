@@ -305,7 +305,7 @@ async function verifyMovie(release) {
     const pubdateProperty = 'pubdate' + release.quality;
 
     if (release[pubdateProperty] == null) {
-        imdbInfo[pubdateProperty] = release.pubdate;
+        imdbInfo[pubdateProperty] = new Date();
     }
 
     await db.upsertIMDb(imdbInfo);
@@ -344,7 +344,7 @@ async function verifyShow(release) {
     validated = true;
 
     if (isNewEpisode) {
-        imdbInfo[pubdateProperty] = release.pubdate;
+        imdbInfo[pubdateProperty] = new Date();
     }
 
     await db.upsertIMDb(imdbInfo);
