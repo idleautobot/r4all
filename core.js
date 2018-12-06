@@ -338,7 +338,12 @@ async function verifyShow(release) {
         isNewEpisode = true;
     } else {
         const lastEpisode = await db.getLastEpisode(imdbInfo._id, release.quality);
-        isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episode) > lastEpisode.episode);
+
+        if (lastEpisode == null) {
+            isNewEpisode = true;
+        } else {
+            isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episode) > lastEpisode.episode);
+        }
     }
 
     validated = true;

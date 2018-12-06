@@ -1,8 +1,7 @@
 'use strict';
 
 const debug = require('debug')('DB');
-const Promise = require('bluebird');
-const MongoDB = Promise.promisifyAll(require('mongodb'));
+const MongoDB = require('mongodb');
 
 const settings = require('./settings.js');
 
@@ -24,7 +23,7 @@ const database = {
     init: async function() {
         debug('connecting to the db...');
 
-        const client = await MongoDB.MongoClient.connectAsync('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
+        const client = await MongoDB.MongoClient.connect('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
         db = client.db(settings.MONGODB_DATABASE);
 
         db.on('close', function() {
@@ -38,11 +37,11 @@ const database = {
     // get
     // **************************************************
     getBootstrap: async function() {
-        return await db.collection('bootstrap').findOneAsync({ _id: 1 });
+        return await db.collection('bootstrap').findOne({ _id: 1 });
     },
 
     getLastRelease: async function() {
-        return await db.collection('releases').find().project({ _id: 0, name: 1, pubdate: 1 }).sort({ pubdate: -1 }).limit(1).nextAsync();
+        return await db.collection('releases').find().project({ _id: 0, name: 1, pubdate: 1 }).sort({ pubdate: -1 }).limit(1).next();
     },
 
     getReleasesWithoutMagnetLink: async function() {
@@ -52,7 +51,7 @@ const database = {
             $sort: { pubdate: 1 }
         }, {
             $project: { tid: 1 }
-        }]).toArrayAsync();
+        }]).toArray();
     },
 
     getReleasesToVerify: async function() {
@@ -84,7 +83,7 @@ const database = {
                 pubdate720p: '$imdb.pubdate720p',
                 pubdate1080p: '$imdb.pubdate1080p'
             }
-        }]).toArrayAsync();
+        }]).toArray();
     },
 
     getLastEpisode: async function(imdbId, quality) {
@@ -103,13 +102,13 @@ const database = {
                 season: 1,
                 episode: 1
             }
-        }]).toArrayAsync();
+        }]).toArray();
 
-        return lastEpisode[0];
+        return lastEpisode[0] || null;
     },
 
     // getReleaseSubtitle: async function(releaseId) {
-    //     return await db.collection('releases').aggregateAsync([{
+    //     return await db.collection('releases').aggregate([{
     //             $match: { _id: releaseId }
     //         }, {
     //             $lookup: {
@@ -148,11 +147,11 @@ const database = {
                 _id: 1,
                 count: 1
             }
-        }).toArrayAsync();
+        }).toArray();
     },
 
     getUnverifiedShowsCount: async function() {
-        return await db.collection('imdb').countDocumentsAsync({ type: 'show', isVerified: false });
+        return await db.collection('imdb').countDocuments({ type: 'show', isVerified: false });
     },
 
     getReleases: async function(view, page, param) {
@@ -240,7 +239,7 @@ const database = {
 
         match && pipeline.unshift(match);
 
-        return await db.collection('releases').aggregate(pipeline).toArrayAsync();
+        return await db.collection('releases').aggregate(pipeline).toArray();
     },
 
     getUnverifiedMovies: async function() {
@@ -250,7 +249,7 @@ const database = {
         }, {
             name: 1,
             imdbId: 1
-        }).sort({ name: 1 }).toArrayAsync();
+        }).sort({ name: 1 }).toArray();
     },
 
     getUnverifiedShows: async function() {
@@ -262,7 +261,7 @@ const database = {
             year: 1,
             folder: 1,
             addic7edId: 1
-        }).sort({ title: 1 }).toArrayAsync();
+        }).sort({ title: 1 }).toArray();
     },
 
     // **************************************************
@@ -270,18 +269,18 @@ const database = {
     // **************************************************
     upsertBootstrap: async function(bootstrap) {
         bootstrap._id = 1;
-        await db.collection('bootstrap').updateOneAsync({ _id: bootstrap._id }, { $set: bootstrap }, { upsert: true });
+        await db.collection('bootstrap').updateOne({ _id: bootstrap._id }, { $set: bootstrap }, { upsert: true });
     },
 
     upsertRelease: async function(release) {
         delete release.page;
-        await db.collection('releases').updateOneAsync({ _id: release._id }, { $set: release, $currentDate: { updatedOn: true } }, { upsert: true });
+        await db.collection('releases').updateOne({ _id: release._id }, { $set: release, $currentDate: { updatedOn: true } }, { upsert: true });
     },
 
     upsertIMDb: async function(imdbInfo) {
         const akas = imdbInfo.akas;
         delete imdbInfo.akas;
-        await db.collection('imdb').updateOneAsync({ _id: imdbInfo._id }, { $set: imdbInfo, $currentDate: { updatedOn: true } }, { upsert: true });
+        await db.collection('imdb').updateOne({ _id: imdbInfo._id }, { $set: imdbInfo, $currentDate: { updatedOn: true } }, { upsert: true });
         imdbInfo.akas = akas;
     },
 
@@ -289,7 +288,7 @@ const database = {
     // remove
     // **************************************************
     removeRelease: async function(release) {
-        await db.collection('releases').removeAsync({ _id: release._id });
+        await db.collection('releases').remove({ _id: release._id });
     },
 
     // **************************************************
@@ -301,7 +300,7 @@ const database = {
             { $sort: { updatedOn: 1 } },
             { $limit: 1 },
             { $project: { tid: 1 } }
-        ]).toArrayAsync();
+        ]).toArray();
 
         return docs[0];
     },
@@ -311,7 +310,7 @@ const database = {
             { $sort: { updatedOn: 1 } },
             { $limit: 1 },
             { $project: { _id: 1, type: 1 } }
-        ]).toArrayAsync();
+        ]).toArray();
 
         return docs[0];
     },
@@ -320,7 +319,7 @@ const database = {
     // memory
     // **************************************************
     insertMemoryUsage: async function(data) {
-        await db.collection('memory').insertOneAsync(data);
+        await db.collection('memory').insertOne(data);
     },
 
     getMemoryUsage: async function() {
@@ -332,7 +331,7 @@ const database = {
                 x: { $subtract: ['$date', new Date('1970-01-01')] },
                 y: { $divide: ['$rss', 1048576] }
             }
-        }]).toArrayAsync();
+        }]).toArray();
     },
 
     // **************************************************
@@ -345,22 +344,22 @@ const database = {
         feedFrom = (!isNaN(feedFrom) && feedFrom) || new Date('1970-01-01');
 
         if (filters.mquality === '1080p') {
-            movieQualityFilter = { pubdate720p: { $gt: feedFrom } };
+            movieQualityFilter = { pubdate1080p: { $gt: feedFrom } };
             moviePubdateProjection = '$pubdate1080p';
         } else {
-            movieQualityFilter = { pubdate1080p: { $gt: feedFrom } };
+            movieQualityFilter = { pubdate720p: { $gt: feedFrom } };
             moviePubdateProjection = '$pubdate720p';
         }
 
-        if (filters.mquality === '1080p') {
-            showQualityFilter = { pubdate720p: { $gt: feedFrom } };
+        if (filters.squality === '1080p') {
+            showQualityFilter = { pubdate1080p: { $gt: feedFrom } };
             showPubdateProjection = '$pubdate1080p';
         } else {
-            showQualityFilter = { pubdate1080p: { $gt: feedFrom } };
+            showQualityFilter = { pubdate720p: { $gt: feedFrom } };
             showPubdateProjection = '$pubdate720p';
         }
 
-        return await db.collection('imdb').aggregate({
+        return await db.collection('imdb').aggregate([{
             $match: {
                 $or: [{
                     $and: [{ type: 'movie' }, movieQualityFilter]
@@ -373,86 +372,82 @@ const database = {
                 title: 1,
                 type: 1,
                 pubdate: {
-                    $cond: [{ $eq: ["$type", 'movie'] }, moviePubdateProjection, showPubdateProjection]
+                    $cond: [{ $eq: ['$type', 'movie'] }, moviePubdateProjection, showPubdateProjection]
                 }
             }
         }, {
             $sort: {
                 pubdate: 1
             }
-        }).toArrayAsync();
+        }]).toArray();
     },
 
-    // getAppView: function(filters) {
-    //     switch (filters.view) {
-    //         case 'feedView':
-    //             return this.getAppFeedView(filters);
-    //         case 'moviesView':
-    //         case 'showsView':
-    //             return this.getAppReleasesView(filters);
-    //         case 'imdbView':
-    //             return this.getAppIMDbView(filters);
-    //         case 'detail':
-    //             return this.getAppDetail(filters);
-    //         default:
-    //             return Promise.resolve([]);
-    //     }
-    // },
+    getAppView: function(view, filters) {
+        switch (view) {
+            case 'feed':
+                return this.getAppFeedView(filters);
+            case 'movies':
+            case 'shows':
+                return this.getAppReleasesView(filters);
+            case 'imdb':
+                return this.getAppIMDbView(filters);
+            case 'detail':
+                return this.getAppDetail(filters);
+            default:
+                //return Promise.resolve([]);
+        }
+    },
 
-    // getAppFeedView: function(filters) {
-    //     var pipeline = [];
+    getAppFeedView: async function(filters) {
+        let movieQualityFilter, showQualityFilter, moviePubdateProjection, showPubdateProjection;
 
-    //     // from
-    //     filters.from = parseInt(filters.from);
-    //     filters.from = new Date(filters.from ? filters.from : '1970-01-01');
+        let feedFrom = new Date(filters.from);
+        feedFrom = (!isNaN(feedFrom) && feedFrom) || new Date('1970-01-01');
 
-    //     pipeline.push({ $match: { verifiedOn: { $gt: filters.from } } });
+        if (filters.mquality === '1080p') {
+            movieQualityFilter = { pubdate1080p: { $gt: feedFrom } };
+            moviePubdateProjection = '$pubdate1080p';
+        } else {
+            movieQualityFilter = { pubdate720p: { $gt: feedFrom } };
+            moviePubdateProjection = '$pubdate720p';
+        }
 
-    //     // category
-    //     if (filters.quality && (filters.quality == '720p' || filters.quality == '1080p')) {
-    //         pipeline.push({ $match: { $or: [{ category: 'm' + filters.quality }, { category: 's720p' }] } });
-    //     }
+        if (filters.squality === '1080p') {
+            showQualityFilter = { pubdate1080p: { $gt: feedFrom } };
+            showPubdateProjection = '$pubdate1080p';
+        } else {
+            showQualityFilter = { pubdate720p: { $gt: feedFrom } };
+            showPubdateProjection = '$pubdate720p';
+        }
 
-    //     // page
-    //     filters.page = filters.page > 1 ? filters.page : 1;
+        filters.page = filters.page > 1 ? filters.page : 1;
 
-    //     // remaining pipeline
-    //     pipeline.push({
-    //         $sort: { date: 1 }
-    //     }, {
-    //         $skip: (filters.page - 1) * settings.appPageRecords
-    //     }, {
-    //         $limit: settings.appPageRecords
-    //     }, {
-    //         $lookup: {
-    //             from: 'imdb',
-    //             localField: 'imdbId',
-    //             foreignField: '_id',
-    //             as: 'imdb'
-    //         }
-    //     }, {
-    //         $unwind: '$imdb'
-    //     }, {
-    //         $project: {
-    //             name: 1,
-    //             parsed: 1,
-    //             category: 1,
-    //             imdbId: 1,
-    //             verifiedOn: 1,
-    //             magnetLink: 1,
-    //             subtitleId: 1,
-    //             title: '$imdb.title',
-    //             type: '$imdb.type',
-    //             numSeasons: '$imdb.numSeasons',
-    //             year: '$imdb.year',
-    //             rating: '$imdb.rating',
-    //             votes: '$imdb.votes',
-    //             cover: '$imdb.cover'
-    //         }
-    //     });
-
-    //     return db.collection('releases').aggregateAsync(pipeline);
-    // },
+        return await db.collection('imdb').aggregate([{
+            $match: {
+                $or: [{
+                    $and: [{ type: 'movie' }, movieQualityFilter]
+                }, {
+                    $and: [{ type: 'show' }, showQualityFilter]
+                }]
+            }
+        }, {
+            $project: {
+                title: 1,
+                type: 1,
+                pubdate: {
+                    $cond: [{ $eq: ['$type', 'movie'] }, moviePubdateProjection, showPubdateProjection]
+                }
+            }
+        }, {
+            $sort: {
+                pubdate: 1
+            }
+        }, {
+            $skip: (filters.page - 1) * settings.appPageRecords
+        }, {
+            $limit: settings.appPageRecords
+        }]).toArray();
+    },
 
     // getAppReleasesView: function(filters) {
     //     var pipeline = [];
@@ -588,7 +583,7 @@ const database = {
     //         }
     //     });
 
-    //     return db.collection('releases').aggregateAsync(pipeline);
+    //     return db.collection('releases').aggregate(pipeline);
     // },
 
     // getAppIMDbView: function(filters) {
@@ -662,7 +657,7 @@ const database = {
     //         }
     //     });
 
-    //     return db.collection('imdb').aggregateAsync(pipeline);
+    //     return db.collection('imdb').aggregate(pipeline);
     // },
 
     // getAppDetail: function(filters) {
@@ -861,7 +856,7 @@ const database = {
     //         });
     //     }
 
-    //     return collection.aggregateAsync(pipeline);
+    //     return collection.aggregate(pipeline);
     // },
 };
 
@@ -968,6 +963,10 @@ module.exports = {
     // **************************************************
     getFeed: async function(...args) {
         return await databaseHandler(this.getFeed.name, ...args);
+    },
+
+    getAppView: async function(...args) {
+        return await databaseHandler(this.getAppView.name, ...args);
     },
 
     // **************************************************
