@@ -26,7 +26,7 @@
             </div>
 
             <div class="list-group">
-                <li class="list-group-item"><b>Core</b>: <%= core.refreshCount().toLocaleString() %> <%= core.refreshCount() == 1 ? 'refresh' : 'refreshes' %> <%= core.lastRefresh ? '(' + moment.duration(moment().diff(core.lastRefresh)).humanize() + ' ago)' : '' %><span class="glyphicon glyphicon-off pull-right <%= core.isOn ? 'isOn' : 'isOff' %>"></span></li>
+                <li class="list-group-item"><b>Core</b>: <%= core.refreshCount().toLocaleString() %> <%= core.refreshCount() == 1 ? 'refresh' : 'refreshes' %> <%= core.lastRefresh() ? '(' + moment.duration(moment().diff(core.lastRefresh())).humanize() + ' ago)' : '' %><span class="glyphicon glyphicon-off pull-right <%= core.isOn ? 'isOn' : 'isOff' %>"></span></li>
                 
                 <a href="<%= providers.freeproxylists.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/freeproxylists-favicon.ico"> FreeProxyLists »<span class="glyphicon glyphicon-off pull-right <%= providers.freeproxylists.isOn ? 'isOn' : 'isOff' %>"></span></a>
                 <a href="<%= providers.rarbg.getURL().toString() %>" class="list-group-item" target="_blank"><img src="/images/providers/rarbg-favicon.ico"> RARBG »<span class="glyphicon glyphicon-off pull-right <%= providers.rarbg.isOn ? 'isOn' : 'isOff' %>"></span></a>

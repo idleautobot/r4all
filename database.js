@@ -104,7 +104,7 @@ const database = {
             }
         }]).toArray();
 
-        return lastEpisode[0] || null;
+        return lastEpisode[0];
     },
 
     // getReleaseSubtitle: async function(releaseId) {

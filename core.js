@@ -130,6 +130,9 @@ const Core = {
     },
     refreshCount: function() {
         return refreshCount;
+    },
+    lastRefresh: function() {
+        return lastRefresh;
     }
 };
 
@@ -339,10 +342,10 @@ async function verifyShow(release) {
     } else {
         const lastEpisode = await db.getLastEpisode(imdbInfo._id, release.quality);
 
-        if (lastEpisode == null) {
-            isNewEpisode = true;
-        } else {
+        if (lastEpisode) {
             isNewEpisode = (release.season > lastEpisode.season) || (release.season == lastEpisode.season && _.max(release.episode) > lastEpisode.episode);
+        } else {
+            isNewEpisode = true;
         }
     }
 
@@ -377,12 +380,12 @@ async function refreshReleaseOutdated() {
     if (release) {
         try { await rarbg.fetchMagnet([release]); } catch (err) {}
 
-        if (release.magnet) {
-            const r = {
-                _id: release._id,
-                magnet: release.magnet
-            };
+        const r = {
+            _id: release._id,
+            magnet: release.magnet
+        };
 
+        if (r.magnet) {
             await db.upsertRelease(r);
         } else if (release.noSuchTorrent) {
             await db.removeRelease(r);
