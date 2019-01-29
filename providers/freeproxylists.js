@@ -2,7 +2,7 @@
 
 const debug = require('debug')('FreeProxyLists');
 const URI = require('urijs');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 const log = require('../logger.js');
 
@@ -31,6 +31,7 @@ async function fetchList(resolve) {
 
     try {
         browser = await puppeteer.launch({
+            executablePath: '/usr/share/applications/chromium-browser.desktop',
             args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
             userDataDir: 'chromium-profile'
         });
