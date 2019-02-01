@@ -4,7 +4,7 @@ const debug = require('debug')('RARBG');
 const _ = require('lodash');
 const URI = require('urijs');
 const URITemplate = require('urijs/src/URITemplate');
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const { TimeoutError } = require('puppeteer-core/Errors');
 
 const log = require('../logger.js');
@@ -83,7 +83,6 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                 try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
-                    executablePath: '/usr/share/applications/chromium-browser.desktop',
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
                     userDataDir: 'chromium-profile'
                 });
@@ -171,7 +170,6 @@ async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) 
                 try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
-                    executablePath: '/usr/share/applications/chromium-browser.desktop',
                     args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-dev-shm-usage'],
                     userDataDir: 'chromium-profile'
                 });
