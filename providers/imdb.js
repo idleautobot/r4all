@@ -4,7 +4,7 @@ const debug = require('debug')('IMDb');
 const _ = require('lodash');
 const URI = require('urijs');
 const URITemplate = require('urijs/src/URITemplate');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 const trakttv = require('./trakttv.js');
 const mdb = require('./themoviedb.js');
@@ -58,7 +58,8 @@ async function fetch(resolve, imdbId, type) {
 
     try {
         browser = await puppeteer.launch({
-            args: ['--lang=en', '--no-sandbox', '--disable-dev-shm-usage'],
+            executablePath: '/usr/bin/chromium',
+            args: ['--lang=en', '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
             userDataDir: 'chromium-profile'
         });
 

@@ -77,6 +77,8 @@ async function memoryUsage() {
 process.setMaxListeners(Infinity);
 process.on('warning', e => console.warn(e.stack));
 
+process.env.NODE_ENV = 'production';
+
 (async function initApp(isProduction) {
     const db = app.locals.db;
     const core = app.locals.core;
