@@ -5,7 +5,7 @@ const _ = require('lodash');
 const URI = require('urijs');
 const URITemplate = require('urijs/src/URITemplate');
 const puppeteer = require('puppeteer');
-const { TimeoutError } = require('puppeteer-core/Errors');
+const { TimeoutError } = require('puppeteer/Errors');
 
 const log = require('../logger.js');
 const freeproxylists = require('./freeproxylists.js');
