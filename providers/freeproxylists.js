@@ -31,9 +31,9 @@ async function fetchList(resolve) {
 
     try {
         browser = await puppeteer.launch({
-            executablePath: '/usr/bin/chromium',
-            args: ['--lang=en', '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-            userDataDir: 'chromium-profile'
+            executablePath: (process.platform === 'win32' ? 'C:/Program Files (x86)/Google/Chrome/Application' : '/usr/bin/chromium'),
+            args: ['--lang=en'],
+            userDataDir: 'r4all-profile'
         });
 
         const page = await browser.newPage();

@@ -23,7 +23,7 @@ const database = {
     init: async function() {
         debug('connecting to the db...');
 
-        const client = await MongoDB.MongoClient.connect('mongodb://' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
+        const client = await MongoDB.MongoClient.connect('mongodb://' + settings.MONGODB_USER + ':' + settings.MONGODB_PASSWORD + '@' + settings.MONGODB_SERVICE_HOST + ':' + settings.MONGODB_SERVICE_PORT + '/' + settings.MONGODB_DATABASE, { useNewUrlParser: true })
         db = client.db(settings.MONGODB_DATABASE);
 
         db.on('close', function() {

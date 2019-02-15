@@ -83,9 +83,9 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                 try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
-                    executablePath: '/usr/bin/chromium',
-                    args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-                    userDataDir: 'chromium-profile'
+                    executablePath: (process.platform === 'win32' ? 'C:/Program Files (x86)/Google/Chrome/Application/' : '/usr/bin/chromium'),
+                    args: ['--lang=en', '--proxy-server=' + proxy],
+                    userDataDir: 'r4all-profile'
                 });
 
                 runs[currRun] = ++instance;
@@ -171,9 +171,9 @@ async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) 
                 try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
-                    executablePath: '/usr/bin/chromium',
-                    args: ['--lang=en', '--proxy-server=' + proxy, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-                    userDataDir: 'chromium-profile'
+                    executablePath: (process.platform === 'win32' ? 'C:/Program Files (x86)/Google/Chrome/Application/' : '/usr/bin/chromium'),
+                    args: ['--lang=en', '--proxy-server=' + proxy],
+                    userDataDir: 'r4all-profile'
                 });
 
                 runs[currRun] = ++instance;

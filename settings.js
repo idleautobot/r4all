@@ -5,11 +5,11 @@ module.exports = {
     // database
     // ####################
 
-    MONGODB_SERVICE_HOST: (process.env.MONGODB_SERVICE_HOST || '127.0.0.1'),
+    MONGODB_USER: (process.env.MONGODB_USER || 'r4all_dev'),
+    MONGODB_PASSWORD: process.env.MONGODB_PASSWORD || 'r4all_dev',
+    MONGODB_SERVICE_HOST: (process.env.MONGODB_SERVICE_HOST || '192.168.1.79'),
     MONGODB_SERVICE_PORT: (process.env.MONGODB_SERVICE_PORT || '27017'),
-    MONGODB_DATABASE: (process.env.MONGODB_DATABASE || 'r4all'),
-    MONGODB_USER: (process.env.MONGODB_USER || 'user'),
-    MONGODB_PASSWORD: (process.env.MONGODB_PASSWORD || 'dtDsBJHl0IFsLPht'),
+    MONGODB_DATABASE: (process.env.MONGODB_DATABASE || 'r4all_dev'),
 
     // ####################
     // core functionality

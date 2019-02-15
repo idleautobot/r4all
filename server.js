@@ -34,7 +34,7 @@ app.locals._ = require('lodash');
 app.locals.moment = require('moment-timezone');
 
 // set server info
-app.set('port', 8080);
+app.set('port', 80);
 app.set('ip', '0.0.0.0');
 
 // view engine setup
@@ -76,8 +76,6 @@ async function memoryUsage() {
 
 process.setMaxListeners(Infinity);
 process.on('warning', e => console.warn(e.stack));
-
-process.env.NODE_ENV = 'production';
 
 (async function initApp(isProduction) {
     const db = app.locals.db;
