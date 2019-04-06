@@ -10,6 +10,7 @@ const trakttv = require('./trakttv.js');
 const mdb = require('./themoviedb.js');
 
 const log = require('../logger.js');
+const settings = require('../settings.js');
 
 const URL = URI('https://www.imdb.com');
 const TITLE_URL = URITemplate(URL.toString() + 'title/{imdbId}/');
@@ -58,7 +59,7 @@ async function fetch(resolve, imdbId, type) {
 
     try {
         browser = await puppeteer.launch({
-            executablePath: (process.platform === 'win32' ? 'C:/Program Files (x86)/Google/Chrome/Application/' : '/usr/bin/chromium'),
+            executablePath: settings.chromiumPath,
             args: ['--lang=en'],
             userDataDir: 'r4all-profile'
         });

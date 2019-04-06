@@ -15,6 +15,8 @@ module.exports = {
     // core functionality
     // ####################
 
+    chromiumPath: (process.env.chromiumPath || 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'),
+
     // http request timeout
     requestTimeout: (parseInt(process.env.APP_REQUEST_TIMEOUT_SECONDS) || 60) * 1000,
 

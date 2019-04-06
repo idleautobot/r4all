@@ -8,6 +8,7 @@ const puppeteer = require('puppeteer-core');
 const { TimeoutError } = require('puppeteer-core/Errors');
 
 const log = require('../logger.js');
+const settings = require('../settings.js');
 const freeproxylists = require('./freeproxylists.js');
 
 const URL = URI('https://rarbg.to');
@@ -83,7 +84,7 @@ async function fetchReleases(currRun, resolve, lastRelease, pageNumber, releases
                 try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
-                    executablePath: (process.platform === 'win32' ? 'C:/Program Files (x86)/Google/Chrome/Application/' : '/usr/bin/chromium'),
+                    executablePath: settings.chromiumPath,
                     args: ['--lang=en', '--proxy-server=' + proxy],
                     userDataDir: 'r4all-profile'
                 });
@@ -171,7 +172,7 @@ async function fetchMagnet(currRun, resolve, releases, index = 0, instance = 0) 
                 try { await browser.close(); } catch (err) {}
 
                 browser = await puppeteer.launch({
-                    executablePath: (process.platform === 'win32' ? 'C:/Program Files (x86)/Google/Chrome/Application/' : '/usr/bin/chromium'),
+                    executablePath: settings.chromiumPath,
                     args: ['--lang=en', '--proxy-server=' + proxy],
                     userDataDir: 'r4all-profile'
                 });
